@@ -1326,6 +1326,45 @@
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
-    </script>
+  // Connected Google Apps Script Web App URL
+        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbw3KqdX32jknkV4rtz2hqgANBw891hFTfB5m1atnsne6UealKw6CttvX_vZs_jPgRrWJQ/exec";
+
+        // Fetch data from Google Sheets on startup
+        async function fetchGoogleSheetData() {
+            if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) return;
+            try {
+                const response = await fetch(`${GOOGLE_API_URL}?action=getAllData`);
+                const data = await response.json();
+                
+                if (data.assets && data.assets.length > 0) {
+                    assets = data.assets;
+                    localStorage.setItem('ppm_assets', JSON.stringify(assets));
+                }
+                if (data.records && data.records.length > 0) {
+                    reviews = data.records;
+                    localStorage.setItem('ppm_reviews', JSON.stringify(reviews));
+                }
+                if (data.schedules && data.schedules.length > 0) {
+                    schedules = data.schedules;
+                    localStorage.setItem('ppm_schedules', JSON.stringify(schedules));
+                }
+                if (data.technicians && data.technicians.length > 0) {
+                    technicians = data.technicians;
+                    localStorage.setItem('ppm_techs', JSON.stringify(technicians));
+                }
+                
+                // Re-render UI with live data
+                renderAllViews();
+                showToast("Synced successfully with Google Sheets!", "success");
+            } catch (err) {
+                console.error("Using local cache, offline mode active.", err);
+            }
+        }
+
+        // Call this inside your window/document load listener
+        document.addEventListener("DOMContentLoaded", () => {
+            fetchGoogleSheetData();
+            renderAllViews();
+        });  </script>
 </body>
 </html>
