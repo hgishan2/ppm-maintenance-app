@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPM Facility Management System</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darknavy: '#0b132b',
+                        navycard: '#1c2541',
+                        navyslate: '#3a506b',
+                        accentcyan: '#00b4d8',
+                        accentteal: '#00f5d4'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-darknavy text-gray-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-navycard border-b border-navyslate/40 sticky top-0 z-50 px-6 py-3 flex items-center justify-between shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-accentcyan to-accentteal flex items-center justify-center text-darknavy font-black text-xl shadow-md">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-wide text-white">PPM Facility Hub</h1>
+                <p class="text-xs text-accentcyan font-medium">Planned Preventive Maintenance System</p>
+            </div>
+        </div>
+
+        <!-- Role Switcher & User Profile -->
+        <div class="flex items-center space-x-4">
+            <div class="bg-darknavy px-3 py-1.5 rounded-lg border border-navyslate/50 flex items-center space-x-2">
+                <span class="text-xs text-gray-400 font-medium">Active Mode:</span>
+                <select id="roleSwitcher" onchange="switchRole(this.value)" class="bg-navyslate text-white text-xs font-semibold px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-accentcyan">
+                    <option value="admin">Admin / Supervisor</option>
+                    <option value="technician">Technician View</option>
+                </select>
+            </div>
+            <div class="hidden md:flex items-center space-x-2 pl-3 border-l border-navyslate/50">
+                <div class="w-8 h-8 rounded-full bg-accentcyan/20 text-accentcyan font-bold flex items-center justify-center text-sm border border-accentcyan/40" id="userAvatar">IM</div>
+                <div class="text-left">
+                    <p class="text-xs font-bold text-white" id="userNameDisplay">Ishan Madhushanka</p>
+                    <p class="text-[10px] text-gray-400" id="userRoleDisplay">Supervisor</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Navigation Bar -->
+    <nav class="bg-navycard/70 border-b border-navyslate/30 px-6 py-2 flex overflow-x-auto space-x-2 text-sm shadow-sm">
+        <!-- Admin Tabs -->
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="admin-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 bg-accentcyan text-darknavy shadow">
+            <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
+        </button>
+        <button onclick="switchTab('review')" id="tab-review" class="admin-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40">
+            <i class="fa-solid fa-clipboard-check"></i><span>Review Queue</span>
+            <span id="pendingBadge" class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
+        </button>
+        <button onclick="switchTab('assets')" id="tab-assets" class="admin-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40">
+            <i class="fa-solid fa-boxes-stacked"></i><span>Asset Directory</span>
+        </button>
+        <button onclick="switchTab('schedule')" id="tab-schedule" class="admin-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40">
+            <i class="fa-solid fa-calendar-days"></i><span>Schedules & Assign</span>
+        </button>
+        <button onclick="switchTab('config')" id="tab-config" class="admin-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40">
+            <i class="fa-solid fa-users-gear"></i><span>Users & Config</span>
+        </button>
+
+        <!-- Shared / Universal Tabs -->
+        <button onclick="switchTab('perform')" id="tab-perform" class="nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40">
+            <i class="fa-solid fa-wrench"></i><span>Perform PPM</span>
+        </button>
+        <button onclick="switchTab('myTasks')" id="tab-myTasks" class="tech-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40">
+            <i class="fa-solid fa-list-check"></i><span>My Assigned Tasks</span>
+        </button>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+
+        <!-- DASHBOARD VIEW (Admin Only) -->
+        <section id="view-dashboard" class="view-section space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md">
+                    <p class="text-xs text-gray-400 font-medium">Total Building Assets</p>
+                    <h3 class="text-2xl font-bold text-white mt-1" id="statAssets">0</h3>
+                    <span class="text-xs text-accentteal mt-2 inline-block"><i class="fa-solid fa-arrow-up"></i> Master Directory</span>
+                </div>
+                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md">
+                    <p class="text-xs text-gray-400 font-medium">Pending Supervisor Approvals</p>
+                    <h3 class="text-2xl font-bold text-amber-400 mt-1" id="statPending">0</h3>
+                    <span class="text-xs text-amber-300 mt-2 inline-block">Requires review</span>
+                </div>
+                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md">
+                    <p class="text-xs text-gray-400 font-medium">Completed PPM Records</p>
+                    <h3 class="text-2xl font-bold text-accentteal mt-1" id="statCompleted">0</h3>
+                    <span class="text-xs text-accentteal mt-2 inline-block">Verified & Approved</span>
+                </div>
+                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md">
+                    <p class="text-xs text-gray-400 font-medium">Active Technicians</p>
+                    <h3 class="text-2xl font-bold text-accentcyan mt-1" id="statTechs">0</h3>
+                    <span class="text-xs text-accentcyan mt-2 inline-block">On duty</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-navycard p-6 rounded-2xl border border-navyslate/40 shadow-md">
+                    <h3 class="font-bold text-white mb-4"><i class="fa-solid fa-chart-bar text-accentcyan mr-2"></i>PPM Compliance Status</h3>
+                    <div class="h-64 flex items-center justify-center">
+                        <canvas id="complianceChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-navycard p-6 rounded-2xl border border-navyslate/40 shadow-md">
+                    <h3 class="font-bold text-white mb-4"><i class="fa-solid fa-chart-pie text-accentteal mr-2"></i>Asset Categories Breakdown</h3>
+                    <div class="h-64 flex items-center justify-center">
+                        <canvas id="assetCategoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- REVIEW QUEUE VIEW (Admin Only) -->
+        <section id="view-review" class="view-section hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold text-white">Supervisor Review Queue</h2>
+                <button onclick="loadDataFromGoogleSheets()" class="bg-navyslate hover:bg-navyslate/80 text-xs text-white px-3 py-2 rounded-lg transition">
+                    <i class="fa-solid fa-rotate mr-1"></i> Refresh Sync
+                </button>
+            </div>
+            <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50">
+                                <th class="p-4">ID</th>
+                                <th class="p-4">Asset / Location</th>
+                                <th class="p-4">Technician</th>
+                                <th class="p-4">Date & Time</th>
+                                <th class="p-4">Photos</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reviewTableBody" class="text-sm divide-y divide-navyslate/30">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ASSET DIRECTORY VIEW -->
+        <section id="view-assets" class="view-section hidden space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <h2 class="text-xl font-bold text-white">Building Asset Master Directory</h2>
+                <div class="flex space-x-3">
+                    <input type="file" id="excelUploadInput" accept=".csv, .xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
+                    <button onclick="document.getElementById('excelUploadInput').click()" class="bg
