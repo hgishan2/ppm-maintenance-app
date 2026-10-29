@@ -1,9 +1,10 @@
+```html
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PPM Facility Management System</title>
+    <title>PPM Facility Hub - Planned Preventive Maintenance System</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -28,34 +29,56 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS (Excel / CSV import) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* Custom scrollbars for clean navy aesthetics */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b132b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3a506b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #00b4d8;
+        }
+    </style>
 </head>
 <body class="bg-darknavy text-gray-100 font-sans min-h-screen flex flex-col">
 
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
     <!-- Top Navigation Header -->
-    <header class="bg-navycard border-b border-navyslate/40 sticky top-0 z-40 px-6 py-3 flex items-center justify-between shadow-lg">
+    <header class="bg-navycard border-b border-navyslate/40 sticky top-0 z-40 px-4 sm:px-6 py-3 flex items-center justify-between shadow-lg">
         <div class="flex items-center space-x-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-accentcyan to-accentteal flex items-center justify-center text-darknavy font-black text-xl shadow-md">
                 <i class="fa-solid fa-screwdriver-wrench"></i>
             </div>
             <div>
-                <h1 class="font-bold text-lg tracking-wide text-white">PPM Facility Hub</h1>
-                <p class="text-xs text-accentcyan font-medium">Planned Preventive Maintenance System</p>
+                <h1 class="font-bold text-base sm:text-lg tracking-wide text-white">PPM Facility Hub</h1>
+                <p class="text-[10px] sm:text-xs text-accentcyan font-medium">Planned Preventive Maintenance System</p>
             </div>
         </div>
 
         <!-- Sync status, Role Switcher & User Profile -->
-        <div class="flex items-center space-x-4">
-            <div id="syncStatus" class="hidden sm:flex items-center space-x-1.5 text-xs text-gray-400" title="Google Sheets sync status">
-                <span id="syncDot" class="w-2 h-2 rounded-full bg-gray-500"></span>
-                <span id="syncText">Not synced</span>
+        <div class="flex items-center space-x-3 sm:space-x-4">
+            <div id="syncStatus" class="hidden sm:flex items-center space-x-1.5 text-xs text-gray-400 cursor-pointer" onclick="toggleSync()" title="Click to toggle sync status">
+                <span id="syncDot" class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span id="syncText" class="text-emerald-400 font-medium">Synced</span>
             </div>
-            <div class="bg-darknavy px-3 py-1.5 rounded-lg border border-navyslate/50 flex items-center space-x-2">
-                <span class="text-xs text-gray-400 font-medium">Active Mode:</span>
-                <select id="roleSwitcher" onchange="switchRole(this.value)" class="bg-navyslate text-white text-xs font-semibold px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-accentcyan">
+            
+            <div class="bg-darknavy px-2.5 py-1.5 rounded-lg border border-navyslate/50 flex items-center space-x-2">
+                <span class="text-xs text-gray-400 font-medium hidden md:inline">Active Mode:</span>
+                <select id="roleSwitcher" onchange="switchRole(this.value)" class="bg-navyslate text-white text-xs font-semibold px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-accentcyan cursor-pointer">
                     <option value="admin">Admin / Supervisor</option>
                     <option value="technician">Technician View</option>
                 </select>
             </div>
+
             <div class="hidden md:flex items-center space-x-2 pl-3 border-l border-navyslate/50">
                 <div class="w-8 h-8 rounded-full bg-accentcyan/20 text-accentcyan font-bold flex items-center justify-center text-sm border border-accentcyan/40" id="userAvatar">IM</div>
                 <div class="text-left">
@@ -67,72 +90,100 @@
     </header>
 
     <!-- Main Navigation Bar -->
-    <nav class="bg-navycard/70 border-b border-navyslate/30 px-6 py-2 flex overflow-x-auto space-x-2 text-sm shadow-sm">
+    <nav class="bg-navycard/70 border-b border-navyslate/30 px-4 sm:px-6 py-2 flex overflow-x-auto space-x-2 text-sm shadow-sm scrollbar-none">
         <!-- Admin Tabs -->
-        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="admin-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 bg-accentcyan text-darknavy shadow whitespace-nowrap">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="admin-tab nav-btn px-3.5 py-2 rounded-lg font-medium transition flex items-center space-x-2 bg-accentcyan text-darknavy shadow whitespace-nowrap">
             <i class="fa-solid fa-chart-pie"></i><span>Dashboard</span>
         </button>
-        <button onclick="switchTab('review')" id="tab-review" class="admin-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
+        <button onclick="switchTab('review')" id="tab-review" class="admin-tab nav-btn px-3.5 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
             <i class="fa-solid fa-clipboard-check"></i><span>Review Queue</span>
             <span id="pendingBadge" class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">0</span>
         </button>
-        <button onclick="switchTab('assets')" id="tab-assets" class="admin-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
+        <button onclick="switchTab('assets')" id="tab-assets" class="admin-tab nav-btn px-3.5 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
             <i class="fa-solid fa-boxes-stacked"></i><span>Asset Directory</span>
         </button>
-        <button onclick="switchTab('schedule')" id="tab-schedule" class="admin-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
+        <button onclick="switchTab('schedule')" id="tab-schedule" class="admin-tab nav-btn px-3.5 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
             <i class="fa-solid fa-calendar-days"></i><span>Schedules & Assign</span>
         </button>
-        <button onclick="switchTab('config')" id="tab-config" class="admin-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
+        <button onclick="switchTab('config')" id="tab-config" class="admin-tab nav-btn px-3.5 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
             <i class="fa-solid fa-users-gear"></i><span>Users & Config</span>
         </button>
 
         <!-- Shared / Universal Tabs -->
-        <button onclick="switchTab('perform')" id="tab-perform" class="nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
+        <button onclick="switchTab('perform')" id="tab-perform" class="nav-btn px-3.5 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
             <i class="fa-solid fa-wrench"></i><span>Perform PPM</span>
         </button>
-        <button onclick="switchTab('myTasks')" id="tab-myTasks" class="tech-tab nav-btn px-4 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
+        <button onclick="switchTab('myTasks')" id="tab-myTasks" class="tech-tab nav-btn px-3.5 py-2 rounded-lg font-medium transition flex items-center space-x-2 text-gray-300 hover:bg-navyslate/40 whitespace-nowrap">
             <i class="fa-solid fa-list-check"></i><span>My Assigned Tasks</span>
         </button>
     </nav>
 
     <!-- Main Content Container -->
-    <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+    <main class="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full">
 
         <!-- DASHBOARD VIEW (Admin Only) -->
         <section id="view-dashboard" class="view-section space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md">
-                    <p class="text-xs text-gray-400 font-medium">Total Building Assets</p>
-                    <h3 class="text-2xl font-bold text-white mt-1" id="statAssets">0</h3>
-                    <span class="text-xs text-accentteal mt-2 inline-block"><i class="fa-solid fa-arrow-up"></i> Master Directory</span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium">Total Building Assets</p>
+                        <h3 class="text-2xl font-bold text-white mt-1" id="statAssets">0</h3>
+                        <span class="text-xs text-accentteal mt-1 inline-block"><i class="fa-solid fa-building mr-1"></i> Master Directory</span>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-accentcyan/10 text-accentcyan flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                    </div>
                 </div>
-                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md">
-                    <p class="text-xs text-gray-400 font-medium">Pending Supervisor Approvals</p>
-                    <h3 class="text-2xl font-bold text-amber-400 mt-1" id="statPending">0</h3>
-                    <span class="text-xs text-amber-300 mt-2 inline-block">Requires review</span>
+
+                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium">Pending Approvals</p>
+                        <h3 class="text-2xl font-bold text-amber-400 mt-1" id="statPending">0</h3>
+                        <span class="text-xs text-amber-300/80 mt-1 inline-block"><i class="fa-solid fa-clock mr-1"></i> Requires supervisor review</span>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-clipboard-question"></i>
+                    </div>
                 </div>
-                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md">
-                    <p class="text-xs text-gray-400 font-medium">Completed PPM Records</p>
-                    <h3 class="text-2xl font-bold text-accentteal mt-1" id="statCompleted">0</h3>
-                    <span class="text-xs text-accentteal mt-2 inline-block">Verified & Approved</span>
+
+                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium">Completed Records</p>
+                        <h3 class="text-2xl font-bold text-emerald-400 mt-1" id="statCompleted">0</h3>
+                        <span class="text-xs text-emerald-300/80 mt-1 inline-block"><i class="fa-solid fa-circle-check mr-1"></i> Verified & Approved</span>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-square-check"></i>
+                    </div>
                 </div>
-                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md">
-                    <p class="text-xs text-gray-400 font-medium">Active Technicians</p>
-                    <h3 class="text-2xl font-bold text-accentcyan mt-1" id="statTechs">0</h3>
-                    <span class="text-xs text-accentcyan mt-2 inline-block">On duty</span>
+
+                <div class="bg-navycard p-5 rounded-2xl border border-navyslate/40 shadow-md flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-gray-400 font-medium">Active Technicians</p>
+                        <h3 class="text-2xl font-bold text-accentcyan mt-1" id="statTechs">0</h3>
+                        <span class="text-xs text-accentcyan/80 mt-1 inline-block"><i class="fa-solid fa-user-gear mr-1"></i> Staff on duty</span>
+                    </div>
+                    <div class="w-12 h-12 rounded-xl bg-accentcyan/10 text-accentcyan flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
                 </div>
             </div>
 
+            <!-- Dashboard Analytics Charts -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-navycard p-6 rounded-2xl border border-navyslate/40 shadow-md">
-                    <h3 class="font-bold text-white mb-4"><i class="fa-solid fa-chart-bar text-accentcyan mr-2"></i>PPM Compliance Status</h3>
-                    <div class="h-64 flex items-center justify-center">
+                    <h3 class="font-bold text-white mb-4 flex items-center">
+                        <i class="fa-solid fa-chart-pie text-accentcyan mr-2"></i> PPM Compliance & Service Status
+                    </h3>
+                    <div class="h-64 relative flex items-center justify-center">
                         <canvas id="complianceChart"></canvas>
                     </div>
                 </div>
                 <div class="bg-navycard p-6 rounded-2xl border border-navyslate/40 shadow-md">
-                    <h3 class="font-bold text-white mb-4"><i class="fa-solid fa-chart-pie text-accentteal mr-2"></i>Asset Categories Breakdown</h3>
-                    <div class="h-64 flex items-center justify-center">
+                    <h3 class="font-bold text-white mb-4 flex items-center">
+                        <i class="fa-solid fa-chart-bar text-accentteal mr-2"></i> Asset Categories Distribution
+                    </h3>
+                    <div class="h-64 relative flex items-center justify-center">
                         <canvas id="assetCategoryChart"></canvas>
                     </div>
                 </div>
@@ -141,20 +192,25 @@
 
         <!-- REVIEW QUEUE VIEW (Admin Only) -->
         <section id="view-review" class="view-section hidden space-y-6">
-            <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold text-white">Supervisor Review Queue</h2>
-                <button onclick="loadDataFromGoogleSheets(true)" class="bg-navyslate hover:bg-navyslate/80 text-xs text-white px-3 py-2 rounded-lg transition">
-                    <i class="fa-solid fa-rotate mr-1"></i> Refresh Sync
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Supervisor Review Queue</h2>
+                    <p class="text-xs text-gray-400">Review technician service entries and verify attached evidence photo(s).</p>
+                </div>
+                <button onclick="renderReviewQueue()" class="bg-navyslate hover:bg-navyslate/80 text-xs text-white px-3 py-2 rounded-lg transition">
+                    <i class="fa-solid fa-rotate mr-1"></i> Refresh Queue
                 </button>
             </div>
+
             <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50">
-                                <th class="p-4">ID</th>
-                                <th class="p-4">Asset / Location</th>
+                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50 uppercase tracking-wider">
+                                <th class="p-4">Record ID</th>
+                                <th class="p-4">Asset & Location</th>
                                 <th class="p-4">Technician</th>
+                                <th class="p-4">Service Type</th>
                                 <th class="p-4">Date & Time</th>
                                 <th class="p-4">Photos</th>
                                 <th class="p-4">Status</th>
@@ -170,32 +226,43 @@
         <!-- ASSET DIRECTORY VIEW -->
         <section id="view-assets" class="view-section hidden space-y-6">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h2 class="text-xl font-bold text-white">Building Asset Master Directory</h2>
-                <div class="flex flex-wrap gap-3">
-                    <button onclick="downloadAssetTemplate()" class="bg-navyslate hover:bg-navyslate/80 text-white px-4 py-2 rounded-xl text-xs transition">
-                        <i class="fa-solid fa-download mr-1.5"></i> Download Template
+                <div>
+                    <h2 class="text-xl font-bold text-white">Building Asset Master Directory</h2>
+                    <p class="text-xs text-gray-400">Manage, search, and import facility infrastructure records.</p>
+                </div>
+                <div class="flex flex-wrap gap-2 sm:gap-3">
+                    <button onclick="openAddAssetModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3.5 py-2 rounded-xl text-xs transition shadow flex items-center">
+                        <i class="fa-solid fa-plus mr-1.5"></i> Add Asset
+                    </button>
+                    <button onclick="downloadAssetTemplate()" class="bg-navyslate hover:bg-navyslate/80 text-white px-3.5 py-2 rounded-xl text-xs transition flex items-center">
+                        <i class="fa-solid fa-download mr-1.5"></i> Download CSV Template
                     </button>
                     <input type="file" id="excelUploadInput" accept=".csv, .xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
-                    <button onclick="document.getElementById('excelUploadInput').click()" class="bg-accentcyan text-darknavy font-bold px-4 py-2 rounded-xl text-xs hover:bg-accentteal transition shadow">
-                        <i class="fa-solid fa-file-excel mr-1.5"></i> Upload Master Excel / CSV
+                    <button onclick="document.getElementById('excelUploadInput').click()" class="bg-accentcyan text-darknavy font-bold px-3.5 py-2 rounded-xl text-xs hover:bg-accentteal transition shadow flex items-center">
+                        <i class="fa-solid fa-file-excel mr-1.5"></i> Import CSV / Excel
                     </button>
                 </div>
             </div>
+
             <div class="bg-navycard p-4 rounded-2xl border border-navyslate/40 shadow-md">
-                <input type="text" id="assetSearchInput" onkeyup="filterAssetDirectory()" placeholder="Search assets by name, location, or apartment no..." class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
-                <p class="text-[11px] text-gray-500 mt-2">Upload columns: Asset ID, Building, Location, Asset Type, Asset Name, Model, Serial, Status. Existing Asset IDs are updated; new ones are added.</p>
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-gray-400 text-sm"></i>
+                    <input type="text" id="assetSearchInput" onkeyup="filterAssetDirectory()" placeholder="Search assets by ID, name, building, or location/apartment number..." class="w-full bg-darknavy border border-navyslate/60 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                </div>
             </div>
+
             <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50">
+                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50 uppercase tracking-wider">
                                 <th class="p-4">Asset ID</th>
                                 <th class="p-4">Building</th>
                                 <th class="p-4">Location / Apt</th>
                                 <th class="p-4">Asset Type</th>
                                 <th class="p-4">Asset Name</th>
                                 <th class="p-4">Status</th>
+                                <th class="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="assetTableBody" class="text-sm divide-y divide-navyslate/30"></tbody>
@@ -207,22 +274,27 @@
         <!-- SCHEDULES & ASSIGNMENTS VIEW (Admin Only) -->
         <section id="view-schedule" class="view-section hidden space-y-6">
             <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold text-white">PPM Schedules & Technician Assignment</h2>
-                <button onclick="openAssignModal()" class="bg-accentcyan text-darknavy font-bold px-4 py-2 rounded-xl text-xs hover:bg-accentteal transition shadow">
-                    <i class="fa-solid fa-plus mr-1"></i> Create Schedule
+                <div>
+                    <h2 class="text-xl font-bold text-white">PPM Maintenance Schedules</h2>
+                    <p class="text-xs text-gray-400">Plan periodic service frequencies and dispatch duty tasks to technicians.</p>
+                </div>
+                <button onclick="openAssignModal()" class="bg-accentcyan text-darknavy font-bold px-4 py-2 rounded-xl text-xs hover:bg-accentteal transition shadow flex items-center">
+                    <i class="fa-solid fa-calendar-plus mr-1.5"></i> Create PPM Schedule
                 </button>
             </div>
+
             <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50">
+                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50 uppercase tracking-wider">
                                 <th class="p-4">Schedule ID</th>
                                 <th class="p-4">Asset & Location</th>
                                 <th class="p-4">Frequency</th>
                                 <th class="p-4">Due Date</th>
-                                <th class="p-4">Assigned Technician</th>
+                                <th class="p-4">Assigned Tech</th>
                                 <th class="p-4">Status</th>
+                                <th class="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="scheduleTableBody" class="text-sm divide-y divide-navyslate/30"></tbody>
@@ -234,20 +306,24 @@
         <!-- CONFIG & USERS VIEW (Admin Only) -->
         <section id="view-config" class="view-section hidden space-y-6">
             <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold text-white">User & Technician Management</h2>
-                <button onclick="openUserModal()" class="bg-accentcyan text-darknavy font-bold px-4 py-2 rounded-xl text-xs hover:bg-accentteal transition shadow">
-                    <i class="fa-solid fa-user-plus mr-1"></i> Add Technician
+                <div>
+                    <h2 class="text-xl font-bold text-white">User & Technician Management</h2>
+                    <p class="text-xs text-gray-400">Manage facility maintenance team roster and roles.</p>
+                </div>
+                <button onclick="openUserModal()" class="bg-accentcyan text-darknavy font-bold px-4 py-2 rounded-xl text-xs hover:bg-accentteal transition shadow flex items-center">
+                    <i class="fa-solid fa-user-plus mr-1.5"></i> Add Staff Member
                 </button>
             </div>
+
             <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50">
-                                <th class="p-4">Tech ID</th>
+                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50 uppercase tracking-wider">
+                                <th class="p-4">Tech / User ID</th>
                                 <th class="p-4">Full Name</th>
-                                <th class="p-4">Role / Specialty</th>
-                                <th class="p-4">Status</th>
+                                <th class="p-4">Specialty / Category</th>
+                                <th class="p-4">Duty Status</th>
                                 <th class="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
@@ -258,91 +334,109 @@
         </section>
 
         <!-- PERFORM PPM EXECUTION HUB (Shared / Tech & Admin) -->
-        <section id="view-perform" class="view-section hidden space-y-6 max-w-4xl mx-auto">
-            <div class="bg-navycard p-6 rounded-2xl border border-navyslate/40 shadow-xl space-y-6">
+        <section id="view-perform" class="view-section hidden space-y-6 max-w-3xl mx-auto">
+            <div class="bg-navycard p-6 sm:p-8 rounded-2xl border border-navyslate/40 shadow-xl space-y-6">
                 <div>
-                    <h2 class="text-xl font-bold text-white">Execute PPM Service Task</h2>
-                    <p class="text-xs text-gray-400 mt-1">Select location or apartment number to load related building assets.</p>
+                    <h2 class="text-xl font-bold text-white flex items-center">
+                        <i class="fa-solid fa-wrench text-accentcyan mr-2"></i> Execute PPM Service Task
+                    </h2>
+                    <p class="text-xs text-gray-400 mt-1">Select location or apartment number to auto-fill related building assets.</p>
                 </div>
 
-                <div id="activeTaskBanner" class="hidden bg-accentcyan/10 border border-accentcyan/40 text-accentcyan text-xs rounded-xl px-4 py-2.5 flex items-center justify-between">
-                    <span id="activeTaskText"></span>
-                    <button onclick="clearActiveTask()" class="text-gray-400 hover:text-white ml-3"><i class="fa-solid fa-xmark"></i></button>
+                <div id="activeTaskBanner" class="hidden bg-accentcyan/10 border border-accentcyan/40 text-accentcyan text-xs rounded-xl p-3.5 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-circle-info text-accentcyan"></i>
+                        <span id="activeTaskText">Performing task from schedule queue</span>
+                    </div>
+                    <button onclick="clearActiveTask()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
                 </div>
 
-                <!-- Location / Apartment Search -->
+                <!-- Step 1: Location / Apartment Search -->
                 <div class="space-y-2">
-                    <label class="text-xs font-semibold text-gray-300">1. Enter Area or Apartment No. (e.g. Apt 101, Rooftop, B1)</label>
-                    <div class="flex space-x-2">
-                        <input type="text" id="ppmLocationInput" oninput="filterAssetsByLocation()" placeholder="Type apartment number or location..." class="flex-1 bg-darknavy border border-navyslate/60 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                    <label class="text-xs font-semibold text-gray-300">1. Filter Area or Apartment No. (e.g., Apt 101, Rooftop, B1)</label>
+                    <div class="relative">
+                        <input type="text" id="ppmLocationInput" oninput="filterAssetsByLocation()" placeholder="Type apartment or location name..." class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
                     </div>
                 </div>
 
-                <!-- Asset Selection List -->
+                <!-- Step 2: Asset Selection List -->
                 <div class="space-y-2">
-                    <label class="text-xs font-semibold text-gray-300">2. Select Asset(s) for PPM Service</label>
-                    <div id="ppmAssetSelectList" class="bg-darknavy border border-navyslate/60 rounded-xl p-4 max-h-48 overflow-y-auto space-y-2">
-                        <p class="text-xs text-gray-500 italic">Type an apartment number above to show related assets...</p>
-                    </div>
+                    <label class="text-xs font-semibold text-gray-300">2. Select Asset for Maintenance *</label>
+                    <select id="ppmAssetSelect" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                        <option value="">-- Select or filter location above --</option>
+                    </select>
                 </div>
 
-                <!-- PPM Service Data Form -->
+                <!-- Step 3: Service Details -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-1">
-                        <label class="text-xs font-semibold text-gray-300">Service Type</label>
-                        <select id="ppmServiceType" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-gray-300">Service Type *</label>
+                        <select id="ppmServiceType" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
                             <option value="Monthly Routine PPM">Monthly Routine PPM</option>
                             <option value="Quarterly Servicing">Quarterly Servicing</option>
                             <option value="Annual Overhaul">Annual Overhaul</option>
                             <option value="Corrective Maintenance">Corrective Maintenance</option>
                         </select>
                     </div>
-                    <div class="space-y-1">
-                        <label class="text-xs font-semibold text-gray-300">Date & Time</label>
-                        <input type="datetime-local" id="ppmDateTime" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-accentcyan">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-gray-300">Execution Date & Time *</label>
+                        <input type="datetime-local" id="ppmDateTime" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
                     </div>
                 </div>
 
-                <div class="space-y-1">
-                    <label class="text-xs font-semibold text-gray-300">Work Performed & Observations</label>
-                    <textarea id="ppmWorkNotes" rows="3" placeholder="Describe maintenance checks, filters cleaned, readings recorded..." class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentcyan"></textarea>
+                <div class="space-y-1.5">
+                    <label class="text-xs font-semibold text-gray-300">Work Performed Notes & Observations *</label>
+                    <textarea id="ppmWorkNotes" rows="3" placeholder="Describe servicing checklist items completed, replacement parts, or readings..." class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-3.5 text-sm text-white focus:outline-none focus:border-accentcyan"></textarea>
                 </div>
 
-                <!-- Photo Uploads Before & After -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label class="text-xs font-semibold text-gray-300">Before Service Photo</label>
-                        <input type="file" id="photoBeforeInput" accept="image/*" class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-navyslate file:text-white hover:file:bg-navyslate/80">
+                <!-- Step 4: Photo Evidence Upload -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-gray-300">Attach Inspection / Service Photo Proof</label>
+                    <div class="flex items-center space-x-4">
+                        <input type="file" id="ppmPhotoInput" accept="image/*" class="hidden" onchange="handlePhotoPreview(event)">
+                        <button type="button" onclick="document.getElementById('ppmPhotoInput').click()" class="bg-navyslate hover:bg-navyslate/80 text-xs px-4 py-2.5 rounded-xl transition text-gray-200 border border-navyslate/60 flex items-center">
+                            <i class="fa-solid fa-camera mr-2 text-accentcyan"></i> Choose Photo / Take Picture
+                        </button>
+                        <span id="photoFileName" class="text-xs text-gray-400 truncate max-w-xs">No image uploaded</span>
                     </div>
-                    <div class="space-y-2">
-                        <label class="text-xs font-semibold text-gray-300">After Service Photo</label>
-                        <input type="file" id="photoAfterInput" accept="image/*" class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-navyslate file:text-white hover:file:bg-navyslate/80">
+                    <div id="photoPreviewContainer" class="hidden mt-3">
+                        <div class="relative inline-block border border-navyslate rounded-xl overflow-hidden shadow-lg">
+                            <img id="photoPreviewImg" src="" alt="PPM Evidence" class="h-32 object-cover rounded-xl">
+                            <button type="button" onclick="removePhotoPreview()" class="absolute top-1 right-1 bg-red-600/80 hover:bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
                     </div>
                 </div>
 
-                <button id="submitPpmBtn" onclick="submitPPMRecord()" class="w-full bg-gradient-to-r from-accentcyan to-accentteal text-darknavy font-bold py-3 rounded-xl hover:opacity-90 transition shadow-lg text-sm disabled:opacity-50">
-                    Submit PPM Record for Supervisor Review
-                </button>
+                <div class="pt-4 border-t border-navyslate/40 flex justify-end space-x-3">
+                    <button type="button" onclick="resetPPMForm()" class="bg-navyslate/50 hover:bg-navyslate text-xs text-gray-300 px-5 py-3 rounded-xl transition">
+                        Clear Form
+                    </button>
+                    <button type="button" onclick="submitPPMRecord()" class="bg-accentcyan hover:bg-accentteal text-darknavy font-bold text-xs px-6 py-3 rounded-xl transition shadow-lg flex items-center">
+                        <i class="fa-solid fa-paper-plane mr-2"></i> Submit for Supervisor Review
+                    </button>
+                </div>
             </div>
         </section>
 
-        <!-- MY ASSIGNED TASKS -->
+        <!-- MY ASSIGNED TASKS VIEW (Technician View) -->
         <section id="view-myTasks" class="view-section hidden space-y-6">
             <div class="flex justify-between items-center">
-                <h2 class="text-xl font-bold text-white">My Assigned Task Queue</h2>
-                <button onclick="loadDataFromGoogleSheets(true)" class="bg-navyslate hover:bg-navyslate/80 text-xs text-white px-3 py-2 rounded-lg transition">
-                    <i class="fa-solid fa-rotate mr-1"></i> Refresh Tasks
-                </button>
+                <div>
+                    <h2 class="text-xl font-bold text-white">My Assigned Maintenance Workorders</h2>
+                    <p class="text-xs text-gray-400">Scheduled preventive tasks assigned to your technician profile.</p>
+                </div>
             </div>
+
             <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50">
+                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50 uppercase tracking-wider">
                                 <th class="p-4">Schedule ID</th>
                                 <th class="p-4">Asset & Location</th>
                                 <th class="p-4">Frequency</th>
                                 <th class="p-4">Due Date</th>
+                                <th class="p-4">Status</th>
                                 <th class="p-4 text-right">Action</th>
                             </tr>
                         </thead>
@@ -354,18 +448,71 @@
 
     </main>
 
-    <!-- Modal: Schedule Assignment -->
-    <div id="assignModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
-        <div class="bg-navycard border border-navyslate rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h3 class="font-bold text-white text-lg">Assign PPM Schedule</h3>
+    <!-- MODAL: ADD / EDIT ASSET -->
+    <div id="assetModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-navycard border border-navyslate/60 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+            <h3 class="text-lg font-bold text-white flex items-center">
+                <i class="fa-solid fa-boxes-stacked text-accentcyan mr-2"></i> Add New Building Asset
+            </h3>
             <div class="space-y-3">
                 <div>
-                    <label class="text-xs text-gray-400">Select Asset</label>
-                    <select id="assignAssetSelect" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1"></select>
+                    <label class="text-xs text-gray-300 font-semibold">Asset ID *</label>
+                    <input type="text" id="mAssetId" placeholder="e.g. AST-101" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Frequency</label>
-                    <select id="assignFrequency" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1">
+                    <label class="text-xs text-gray-300 font-semibold">Building *</label>
+                    <input type="text" id="mAssetBuilding" placeholder="e.g. Tower A" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-300 font-semibold">Location / Apartment No. *</label>
+                    <input type="text" id="mAssetLocation" placeholder="e.g. Apt 101 or B1 Pump Room" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-xs text-gray-300 font-semibold">Asset Type *</label>
+                        <select id="mAssetType" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                            <option value="HVAC">HVAC</option>
+                            <option value="Plumbing">Plumbing</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Fire Safety">Fire Safety</option>
+                            <option value="Elevators">Elevators</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-300 font-semibold">Status *</label>
+                        <select id="mAssetStatus" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                            <option value="Operational">Operational</option>
+                            <option value="Under Servicing">Under Servicing</option>
+                            <option value="Faulty">Faulty</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-300 font-semibold">Asset Name *</label>
+                    <input type="text" id="mAssetName" placeholder="e.g. Chilled Water Pump" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2 border-t border-navyslate/40">
+                <button onclick="closeModal('assetModal')" class="bg-navyslate/60 hover:bg-navyslate text-xs text-gray-300 px-4 py-2 rounded-xl transition">Cancel</button>
+                <button onclick="saveAssetModal()" class="bg-accentcyan hover:bg-accentteal text-darknavy font-bold text-xs px-5 py-2 rounded-xl transition">Save Asset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CREATE SCHEDULE -->
+    <div id="scheduleModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-navycard border border-navyslate/60 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+            <h3 class="text-lg font-bold text-white flex items-center">
+                <i class="fa-solid fa-calendar-plus text-accentcyan mr-2"></i> Create Maintenance Schedule
+            </h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs text-gray-300 font-semibold">Select Target Asset *</label>
+                    <select id="mScheduleAsset" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan"></select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-300 font-semibold">Frequency *</label>
+                    <select id="mScheduleFreq" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
                         <option value="Monthly">Monthly</option>
                         <option value="Quarterly">Quarterly</option>
                         <option value="Bi-Annual">Bi-Annual</option>
@@ -373,793 +520,814 @@
                     </select>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Due Date</label>
-                    <input type="date" id="assignDueDate" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1">
+                    <label class="text-xs text-gray-300 font-semibold">Scheduled Due Date *</label>
+                    <input type="date" id="mScheduleDueDate" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Assign Technician</label>
-                    <select id="assignTechSelect" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1"></select>
+                    <label class="text-xs text-gray-300 font-semibold">Assign Technician *</label>
+                    <select id="mScheduleTech" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan"></select>
                 </div>
             </div>
-            <div class="flex justify-end space-x-3 pt-2">
-                <button onclick="closeAssignModal()" class="px-4 py-2 bg-navyslate/60 text-gray-300 text-xs rounded-xl">Cancel</button>
-                <button onclick="saveNewSchedule()" class="px-4 py-2 bg-accentcyan text-darknavy font-bold text-xs rounded-xl">Save Assignment</button>
+            <div class="flex justify-end space-x-2 pt-2 border-t border-navyslate/40">
+                <button onclick="closeModal('scheduleModal')" class="bg-navyslate/60 hover:bg-navyslate text-xs text-gray-300 px-4 py-2 rounded-xl transition">Cancel</button>
+                <button onclick="saveScheduleModal()" class="bg-accentcyan hover:bg-accentteal text-darknavy font-bold text-xs px-5 py-2 rounded-xl transition">Dispatch Schedule</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Add Technician -->
-    <div id="userModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
-        <div class="bg-navycard border border-navyslate rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h3 class="font-bold text-white text-lg">Add Technician</h3>
+    <!-- MODAL: ADD TECHNICIAN -->
+    <div id="userModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-navycard border border-navyslate/60 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl relative">
+            <h3 class="text-lg font-bold text-white flex items-center">
+                <i class="fa-solid fa-user-plus text-accentcyan mr-2"></i> Add Staff Technician
+            </h3>
             <div class="space-y-3">
                 <div>
-                    <label class="text-xs text-gray-400">Full Name</label>
-                    <input type="text" id="userNameInput" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1" placeholder="e.g. Sam Perera">
+                    <label class="text-xs text-gray-300 font-semibold">Full Name *</label>
+                    <input type="text" id="mTechName" placeholder="e.g. John Doe" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400">Role</label>
-                    <input type="text" id="userRoleInput" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1" placeholder="e.g. Plumber">
-                </div>
-                <div>
-                    <label class="text-xs text-gray-400">Specialty</label>
-                    <input type="text" id="userSpecialtyInput" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1" placeholder="e.g. Pumps & Water Systems">
+                    <label class="text-xs text-gray-300 font-semibold">Specialty / Role *</label>
+                    <select id="mTechRole" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                        <option value="HVAC Specialist">HVAC Specialist</option>
+                        <option value="Plumbing Engineer">Plumbing Engineer</option>
+                        <option value="Electrical Specialist">Electrical Specialist</option>
+                        <option value="General Facility Tech">General Facility Tech</option>
+                    </select>
                 </div>
             </div>
-            <div class="flex justify-end space-x-3 pt-2">
-                <button onclick="closeUserModal()" class="px-4 py-2 bg-navyslate/60 text-gray-300 text-xs rounded-xl">Cancel</button>
-                <button onclick="saveNewTechnician()" class="px-4 py-2 bg-accentcyan text-darknavy font-bold text-xs rounded-xl">Add Technician</button>
+            <div class="flex justify-end space-x-2 pt-2 border-t border-navyslate/40">
+                <button onclick="closeModal('userModal')" class="bg-navyslate/60 hover:bg-navyslate text-xs text-gray-300 px-4 py-2 rounded-xl transition">Cancel</button>
+                <button onclick="saveUserModal()" class="bg-accentcyan hover:bg-accentteal text-darknavy font-bold text-xs px-5 py-2 rounded-xl transition">Add Technician</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Photo Viewer -->
-    <div id="photoModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 p-4" onclick="if(event.target===this) closePhotoModal()">
-        <div class="bg-navycard border border-navyslate rounded-2xl max-w-3xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center">
-                <h3 class="font-bold text-white text-lg" id="photoModalTitle">Service Photos</h3>
-                <button onclick="closePhotoModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="photoModalBody"></div>
+    <!-- MODAL: VIEW PHOTO FULLSIZE -->
+    <div id="photoModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4" onclick="closeModal('photoModal')">
+        <div class="max-w-2xl w-full p-2 bg-navycard border border-navyslate rounded-2xl relative overflow-hidden" onclick="event.stopPropagation()">
+            <img id="photoModalImg" src="" alt="Full view" class="w-full h-auto max-h-[80vh] object-contain rounded-xl">
+            <button onclick="closeModal('photoModal')" class="absolute top-4 right-4 bg-darknavy/80 hover:bg-darknavy text-white w-8 h-8 rounded-full flex items-center justify-center text-sm border border-navyslate">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
     </div>
 
-    <!-- Toast Notification Container -->
-    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-2"></div>
 
+    <!-- JAVASCRIPT APPLICATION CORE LOGIC -->
     <script>
-        // Connected Google Apps Script Web App URL
-        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbw3KqdX32jknkV4rtz2hqgANBw891hFTfB5m1atnsne6UealKw6CttvX_vZs_jPgRrWJQ/exec";
-        const SYNC_ENABLED = !!GOOGLE_API_URL && !GOOGLE_API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT");
+        // Default Sample Data (Loaded if localStorage is empty)
+        const defaultAssets = [
+            { id: "AST-001", building: "Tower A", location: "Apt 101", type: "HVAC", name: "FCU Unit 1.1", status: "Operational" },
+            { id: "AST-002", building: "Tower A", location: "Apt 102", type: "Plumbing", name: "Water Heater", status: "Operational" },
+            { id: "AST-003", building: "Tower B", location: "Apt 205", type: "Electrical", name: "Sub-Distribution Board", status: "Operational" },
+            { id: "AST-004", building: "Main Hall", location: "Rooftop", type: "HVAC", name: "Chiller Unit #2", status: "Under Servicing" },
+            { id: "AST-005", building: "Basement", location: "B1 Pump Room", type: "Plumbing", name: "Hydro-Pneumatic Pump", status: "Operational" },
+            { id: "AST-006", building: "Tower A", location: "Elevator Shaft", type: "Elevators", name: "Passenger Elevator #1", status: "Operational" }
+        ];
 
-        // Application State (demo data is replaced as soon as the Google Sheet responds)
-        let appState = {
-            role: 'admin',
-            currentUser: { name: 'Ishan Madhushanka', role: 'Supervisor' },
-            selectedAssetIds: new Set(),
-            activeScheduleId: null,
-            assets: [
-                { id: 'AST-101', building: 'Tower A', location: 'Apt 101', type: 'FCU AC Unit', name: 'Living Room FCU', model: 'Carrier 38QN', serial: 'CR98231', status: 'Active' },
-                { id: 'AST-102', building: 'Tower A', location: 'Apt 102', type: 'Exhaust Fan', name: 'Bathroom Extractor', model: 'Systemair', serial: 'SY44120', status: 'Active' },
-                { id: 'AST-103', building: 'Tower B', location: 'Rooftop', type: 'Chiller Unit', name: 'Main Roof Chiller 1', model: 'Trane RTAC', serial: 'TR88109', status: 'Active' }
-            ],
-            records: [
-                { id: 'REC-001', assetId: 'AST-101', assetName: 'Living Room FCU', location: 'Apt 101', technician: 'Alex Mercer', date: '2026-06-01 10:30', type: 'Monthly Routine PPM', photoBefore: '', photoAfter: '', notes: 'Cleaned filters and checked thermostat calibration.', status: 'Pending', approvedBy: '' }
-            ],
-            schedules: [
-                { id: 'SCH-101', assetId: 'AST-101', assetName: 'Living Room FCU', location: 'Apt 101', frequency: 'Monthly', dueDate: '2026-06-15', assignedTech: 'Alex Mercer', status: 'Scheduled' }
-            ],
-            technicians: [
-                { id: 'TEC-01', name: 'Alex Mercer', role: 'HVAC Specialist', specialty: 'AC & Chillers', status: 'Available' },
-                { id: 'TEC-02', name: 'David Miller', role: 'Electrical Tech', specialty: 'DB Panels & Lighting', status: 'Available' }
-            ]
-        };
+        const defaultTechs = [
+            { id: "TECH-101", name: "Ishan Madhushanka", role: "HVAC Specialist", status: "On Duty" },
+            { id: "TECH-102", name: "Saman Kumara", role: "Plumbing Engineer", status: "On Duty" },
+            { id: "TECH-103", name: "Kasun Perera", role: "Electrical Specialist", status: "On Duty" }
+        ];
 
+        const defaultSchedules = [
+            { id: "SCH-1001", assetId: "AST-004", assetName: "Chiller Unit #2 (Rooftop)", frequency: "Monthly", dueDate: "2026-11-05", techName: "Ishan Madhushanka", status: "Pending" },
+            { id: "SCH-1002", assetId: "AST-005", assetName: "Hydro-Pneumatic Pump (B1 Pump Room)", frequency: "Quarterly", dueDate: "2026-11-10", techName: "Saman Kumara", status: "Pending" }
+        ];
+
+        // State Variables loaded from LocalStorage
+        let assets = JSON.parse(localStorage.getItem('ppm_assets')) || defaultAssets;
+        let technicians = JSON.parse(localStorage.getItem('ppm_techs')) || defaultTechs;
+        let schedules = JSON.parse(localStorage.getItem('ppm_schedules')) || defaultSchedules;
+        let reviews = JSON.parse(localStorage.getItem('ppm_reviews')) || [];
+        
+        let currentRole = "admin"; // 'admin' or 'technician'
+        let currentPpmPhotoData = null;
+        let activeScheduleId = null;
+
+        // Chart Instances
         let complianceChartInstance = null;
         let categoryChartInstance = null;
 
-        // ---------- Helpers ----------
-        function esc(v) {
-            return String(v === undefined || v === null ? '' : v)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        }
-        // Safe for use inside inline onclick="fn('...')" arguments
-        function sid(v) { return String(v === undefined || v === null ? '' : v).replace(/[^\w\-]/g, ''); }
-        function genId(prefix) { return prefix + '-' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 36).toString(36).toUpperCase(); }
-        function stripLocal(obj) {
-            const o = {};
-            Object.keys(obj).forEach(k => { if (k[0] !== '_') o[k] = obj[k]; });
-            return o;
-        }
-
-        // ---------- Init ----------
-        document.addEventListener("DOMContentLoaded", () => {
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            const dtEl = document.getElementById('ppmDateTime');
-            if (dtEl) dtEl.value = now.toISOString().slice(0, 16);
-
-            switchRole('admin');
+        // Initialize App on DOM Load
+        window.addEventListener('DOMContentLoaded', () => {
+            saveStateToStorage();
+            setInitialDateTime();
             renderAllViews();
-            loadDataFromGoogleSheets();
+            initCharts();
+            switchRole('admin');
         });
 
-        // ---------- Role & Tabs ----------
-        function switchRole(role) {
-            appState.role = role;
-            const adminTabs = document.querySelectorAll('.admin-tab');
-            const techTabs = document.querySelectorAll('.tech-tab');
-
-            if (role === 'technician') {
-                appState.currentUser = { name: 'Alex Mercer', role: 'Technician' };
-                document.getElementById('userNameDisplay').innerText = appState.currentUser.name;
-                document.getElementById('userRoleDisplay').innerText = appState.currentUser.role;
-                document.getElementById('userAvatar').innerText = 'AM';
-                adminTabs.forEach(el => el.classList.add('hidden'));
-                techTabs.forEach(el => el.classList.remove('hidden'));
-                renderMyTasksTable();
-                switchTab('perform');
-            } else {
-                appState.currentUser = { name: 'Ishan Madhushanka', role: 'Supervisor' };
-                document.getElementById('userNameDisplay').innerText = appState.currentUser.name;
-                document.getElementById('userRoleDisplay').innerText = appState.currentUser.role;
-                document.getElementById('userAvatar').innerText = 'IM';
-                adminTabs.forEach(el => el.classList.remove('hidden'));
-                techTabs.forEach(el => el.classList.remove('hidden'));
-                renderMyTasksTable();
-                switchTab('dashboard');
-            }
+        // Local Storage Persistence
+        function saveStateToStorage() {
+            localStorage.setItem('ppm_assets', JSON.stringify(assets));
+            localStorage.setItem('ppm_techs', JSON.stringify(technicians));
+            localStorage.setItem('ppm_schedules', JSON.stringify(schedules));
+            localStorage.setItem('ppm_reviews', JSON.stringify(reviews));
         }
 
-        function switchTab(tabId) {
+        // Set default execution time input to current moment
+        function setInitialDateTime() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('ppmDateTime').value = now.toISOString().slice(0, 16);
+        }
+
+        // Role Switcher Handler
+        function switchRole(role) {
+            currentRole = role;
+            const adminTabs = document.querySelectorAll('.admin-tab');
+            const techTabs = document.querySelectorAll('.tech-tab');
+            const userAvatar = document.getElementById('userAvatar');
+            const userNameDisplay = document.getElementById('userNameDisplay');
+            const userRoleDisplay = document.getElementById('userRoleDisplay');
+
+            if (role === 'admin') {
+                adminTabs.forEach(tab => tab.classList.remove('hidden'));
+                userNameDisplay.innerText = "Ishan Madhushanka";
+                userRoleDisplay.innerText = "Supervisor";
+                userAvatar.innerText = "IM";
+                switchTab('dashboard');
+            } else {
+                adminTabs.forEach(tab => tab.classList.add('hidden'));
+                userNameDisplay.innerText = "Saman Kumara";
+                userRoleDisplay.innerText = "Technician";
+                userAvatar.innerText = "SK";
+                switchTab('perform');
+            }
+            renderMyTasks();
+        }
+
+        // Tab Switching Handler
+        function switchTab(tabName) {
             document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('bg-accentcyan', 'text-darknavy', 'shadow');
-                btn.classList.add('text-gray-300', 'hover:bg-navyslate/40');
+                btn.classList.add('text-gray-300');
             });
-            const activeSec = document.getElementById(`view-${tabId}`);
-            const activeBtn = document.getElementById(`tab-${tabId}`);
-            if (activeSec) activeSec.classList.remove('hidden');
-            if (activeBtn) {
-                activeBtn.classList.remove('text-gray-300', 'hover:bg-navyslate/40');
-                activeBtn.classList.add('bg-accentcyan', 'text-darknavy', 'shadow');
+
+            const targetView = document.getElementById(`view-${tabName}`);
+            const targetBtn = document.getElementById(`tab-${tabName}`);
+
+            if (targetView) targetView.classList.remove('hidden');
+            if (targetBtn) {
+                targetBtn.classList.add('bg-accentcyan', 'text-darknavy', 'shadow');
+                targetBtn.classList.remove('text-gray-300');
             }
-            if (tabId === 'dashboard') renderCharts();
+
+            if (tabName === 'dashboard') updateDashboardCharts();
         }
 
-        // ---------- Rendering ----------
+        // Render All UI Data Tables
         function renderAllViews() {
-            renderDashboardStats();
-            renderCharts();
-            renderReviewTable();
             renderAssetTable();
-            renderScheduleTable();
+            renderReviewQueue();
+            renderSchedulesTable();
             renderUserTable();
-            renderMyTasksTable();
+            renderMyTasks();
+            populateAssetDropdowns();
+            updateStats();
         }
 
-        function renderDashboardStats() {
-            document.getElementById('statAssets').innerText = appState.assets.length;
-            const pendingCount = appState.records.filter(r => r.status === 'Pending').length;
+        // Update Statistics Counters
+        function updateStats() {
+            document.getElementById('statAssets').innerText = assets.length;
+            const pendingCount = reviews.filter(r => r.status === 'Pending Supervisor Review').length;
+            const completedCount = reviews.filter(r => r.status === 'Approved').length;
+            
             document.getElementById('statPending').innerText = pendingCount;
             document.getElementById('pendingBadge').innerText = pendingCount;
-            document.getElementById('statCompleted').innerText = appState.records.filter(r => r.status === 'Approved').length;
-            document.getElementById('statTechs').innerText = appState.technicians.filter(t => t.status !== 'On Leave').length;
+            document.getElementById('statCompleted').innerText = completedCount;
+            document.getElementById('statTechs').innerText = technicians.length;
         }
 
-        function renderCharts() {
-            const approved = appState.records.filter(r => r.status === 'Approved').length;
-            const pending = appState.records.filter(r => r.status === 'Pending').length;
-            const rejected = appState.records.filter(r => r.status === 'Rejected').length;
+        // --- ASSET DIRECTORY FUNCTIONS ---
+        function renderAssetTable(data = assets) {
+            const tbody = document.getElementById('assetTableBody');
+            if (!tbody) return;
 
-            const ctx1 = document.getElementById('complianceChart').getContext('2d');
-            if (complianceChartInstance) complianceChartInstance.destroy();
-            complianceChartInstance = new Chart(ctx1, {
-                type: 'bar',
-                data: {
-                    labels: ['Approved', 'Pending Review', 'Rejected'],
-                    datasets: [{
-                        label: 'PPM Records',
-                        data: [approved, pending, rejected],
-                        backgroundColor: ['#00f5d4', '#fbbf24', '#f87171'],
-                        borderRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { ticks: { color: '#9ca3af' }, grid: { display: false } },
-                        y: { ticks: { color: '#9ca3af', precision: 0 }, grid: { color: 'rgba(58,80,107,0.3)' }, beginAtZero: true }
-                    }
-                }
-            });
-
-            const categories = {};
-            appState.assets.forEach(a => { const t = a.type || 'Other'; categories[t] = (categories[t] || 0) + 1; });
-            const palette = ['#00b4d8', '#00f5d4', '#3a506b', '#818cf8', '#fbbf24', '#f87171', '#34d399', '#f472b6'];
-            const labels = Object.keys(categories);
-            const ctx2 = document.getElementById('assetCategoryChart').getContext('2d');
-            if (categoryChartInstance) categoryChartInstance.destroy();
-            categoryChartInstance = new Chart(ctx2, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{ data: Object.values(categories), backgroundColor: labels.map((_, i) => palette[i % palette.length]), borderColor: '#1c2541' }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#d1d5db' } } } }
-            });
-        }
-
-        function renderReviewTable() {
-            const tbody = document.getElementById('reviewTableBody');
-            if (appState.records.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">No PPM records submitted yet.</td></tr>`;
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400 italic">No assets found in master directory. Import Excel/CSV or click "Add Asset".</td></tr>`;
                 return;
             }
-            tbody.innerHTML = appState.records.map(r => {
-                const badgeColor = r.status === 'Approved' ? 'bg-accentteal/20 text-accentteal border-accentteal/40' : r.status === 'Rejected' ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40';
-                const hasPhotos = r.photoBefore || r.photoAfter;
-                const rid = sid(r.id);
-                return `
-                    <tr class="border-b border-navyslate/30 hover:bg-navyslate/20">
-                        <td class="p-4 font-mono text-xs text-accentcyan">${esc(r.id)}</td>
-                        <td class="p-4"><strong>${esc(r.assetName)}</strong><br><span class="text-xs text-gray-400">${esc(r.location)}</span></td>
-                        <td class="p-4">${esc(r.technician)}</td>
-                        <td class="p-4 text-xs text-gray-300">${esc(r.date)}</td>
-                        <td class="p-4">${hasPhotos
-                            ? `<button onclick="viewPhotos('${rid}')" class="text-xs text-accentcyan hover:text-accentteal underline"><i class="fa-solid fa-image mr-1"></i>View</button>`
-                            : `<span class="text-xs text-gray-500">None</span>`}</td>
-                        <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeColor}">${esc(r.status)}</span></td>
-                        <td class="p-4 text-right space-x-2 whitespace-nowrap">
-                            ${r.status === 'Pending' ? `
-                                <button onclick="approveRecord('${rid}', 'Approved')" class="bg-accentteal/20 hover:bg-accentteal/30 text-accentteal px-3 py-1.5 rounded-lg text-xs font-bold transition">Approve</button>
-                                <button onclick="approveRecord('${rid}', 'Rejected')" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold transition">Reject</button>
-                            ` : `<span class="text-xs text-gray-500">Reviewed by ${esc(r.approvedBy)}</span>`}
-                        </td>
-                    </tr>`;
-            }).join('');
+
+            tbody.innerHTML = data.map(a => `
+                <tr class="hover:bg-navyslate/20 transition">
+                    <td class="p-4 font-bold text-accentcyan">${a.id}</td>
+                    <td class="p-4">${a.building}</td>
+                    <td class="p-4">${a.location}</td>
+                    <td class="p-4"><span class="bg-navyslate/60 text-xs px-2.5 py-1 rounded-md text-gray-200 border border-navyslate/40">${a.type}</span></td>
+                    <td class="p-4 font-medium text-white">${a.name}</td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                            a.status === 'Operational' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                            a.status === 'Under Servicing' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                        }">
+                            ${a.status}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteAsset('${a.id}')" class="text-gray-400 hover:text-red-400 px-2 py-1 text-xs transition" title="Delete Asset">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
         }
 
         function filterAssetDirectory() {
             const query = document.getElementById('assetSearchInput').value.toLowerCase();
-            document.querySelectorAll('#assetTableBody tr').forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
-            });
+            const filtered = assets.filter(a =>
+                a.id.toLowerCase().includes(query) ||
+                a.name.toLowerCase().includes(query) ||
+                a.building.toLowerCase().includes(query) ||
+                a.location.toLowerCase().includes(query)
+            );
+            renderAssetTable(filtered);
         }
 
-        function renderAssetTable() {
-            const tbody = document.getElementById('assetTableBody');
-            if (appState.assets.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500">No assets yet. Upload your master Excel / CSV to get started.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = appState.assets.map(a => `
-                <tr class="border-b border-navyslate/30 hover:bg-navyslate/20">
-                    <td class="p-4 font-mono text-xs text-accentcyan">${esc(a.id)}</td>
-                    <td class="p-4">${esc(a.building)}</td>
-                    <td class="p-4 font-semibold">${esc(a.location)}</td>
-                    <td class="p-4">${esc(a.type)}</td>
-                    <td class="p-4">${esc(a.name)}</td>
-                    <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs bg-accentteal/20 text-accentteal">${esc(a.status)}</span></td>
-                </tr>`).join('');
-            filterAssetDirectory();
-        }
-
-        function renderScheduleTable() {
-            const tbody = document.getElementById('scheduleTableBody');
-            if (appState.schedules.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-500">No schedules yet. Select Create Schedule to add one.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = appState.schedules.map(s => {
-                const done = s.status === 'Completed';
-                return `
-                <tr class="border-b border-navyslate/30 hover:bg-navyslate/20">
-                    <td class="p-4 font-mono text-xs text-accentcyan">${esc(s.id)}</td>
-                    <td class="p-4"><strong>${esc(s.assetName || s.assetId)}</strong><br><span class="text-xs text-gray-400">${esc(s.location)}</span></td>
-                    <td class="p-4">${esc(s.frequency)}</td>
-                    <td class="p-4 text-xs text-gray-300">${esc(s.dueDate)}</td>
-                    <td class="p-4"><span class="font-semibold text-accentteal">${esc(s.assignedTech)}</span></td>
-                    <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs ${done ? 'bg-accentteal/20 text-accentteal' : 'bg-amber-500/20 text-amber-300'}">${esc(s.status)}</span></td>
-                </tr>`;
-            }).join('');
-        }
-
-        function renderUserTable() {
-            const tbody = document.getElementById('userTableBody');
-            if (appState.technicians.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500">No technicians yet. Select Add Technician to create one.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = appState.technicians.map(t => {
-                const onLeave = t.status === 'On Leave';
-                const tid = sid(t.id);
-                return `
-                <tr class="border-b border-navyslate/30 hover:bg-navyslate/20">
-                    <td class="p-4 font-mono text-xs text-accentcyan">${esc(t.id)}</td>
-                    <td class="p-4 font-bold">${esc(t.name)}</td>
-                    <td class="p-4">${esc(t.role)} (${esc(t.specialty)})</td>
-                    <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs ${onLeave ? 'bg-amber-500/20 text-amber-300' : 'bg-accentteal/20 text-accentteal'}">${esc(t.status)}</span></td>
-                    <td class="p-4 text-right"><button onclick="toggleTechnicianStatus('${tid}')" class="text-xs text-gray-400 hover:text-white">${onLeave ? 'Mark available' : 'Mark on leave'}</button></td>
-                </tr>`;
-            }).join('');
-        }
-
-        function renderMyTasksTable() {
-            const tbody = document.getElementById('myTasksTableBody');
-            const mine = appState.schedules.filter(s => s.status !== 'Completed' && (s.assignedTech === appState.currentUser.name || appState.role === 'admin'));
-            if (mine.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500">No open tasks assigned.</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = mine.map(s => `
-                <tr class="border-b border-navyslate/30 hover:bg-navyslate/20">
-                    <td class="p-4 font-mono text-xs text-accentcyan">${esc(s.id)}</td>
-                    <td class="p-4"><strong>${esc(s.assetName || s.assetId)}</strong><br><span class="text-xs text-gray-400">${esc(s.location)}</span></td>
-                    <td class="p-4">${esc(s.frequency)}</td>
-                    <td class="p-4 text-xs text-gray-300">${esc(s.dueDate)}</td>
-                    <td class="p-4 text-right">
-                        <button onclick="startTask('${sid(s.id)}')" class="bg-accentcyan text-darknavy font-bold px-3 py-1.5 rounded-lg text-xs hover:bg-accentteal transition">Perform PPM</button>
-                    </td>
-                </tr>`).join('');
-        }
-
-        // ---------- Perform PPM ----------
-        function filterAssetsByLocation() {
-            const raw = document.getElementById('ppmLocationInput').value.trim();
-            const query = raw.toLowerCase();
-            const container = document.getElementById('ppmAssetSelectList');
-
-            if (!query) {
-                container.innerHTML = `<p class="text-xs text-gray-500 italic">Type an apartment number above to show related assets...</p>`;
-                return;
-            }
-
-            const matched = appState.assets.filter(a =>
-                String(a.location).toLowerCase().includes(query) ||
-                String(a.building).toLowerCase().includes(query) ||
-                String(a.name).toLowerCase().includes(query) ||
-                String(a.type).toLowerCase().includes(query) ||
-                String(a.id).toLowerCase().includes(query));
-
-            if (matched.length === 0) {
-                container.innerHTML = `<p class="text-xs text-gray-500 italic">No assets found matching "${esc(raw)}"</p>`;
-                return;
-            }
-
-            const shown = matched.slice(0, 100);
-            container.innerHTML = shown.map(a => `
-                <label class="flex items-center space-x-3 p-2 rounded-lg hover:bg-navyslate/40 cursor-pointer">
-                    <input type="checkbox" value="${esc(a.id)}" ${appState.selectedAssetIds.has(String(a.id)) ? 'checked' : ''} onchange="toggleAssetSelection(this)" class="rounded border-navyslate text-accentcyan focus:ring-accentcyan">
-                    <div class="text-xs">
-                        <strong class="text-white">${esc(a.name)}</strong> <span class="text-accentcyan">(${esc(a.location)})</span> - <span class="text-gray-400">${esc(a.type)}</span>
-                    </div>
-                </label>`).join('') +
-                (matched.length > shown.length ? `<p class="text-[11px] text-gray-500 italic pt-1">Showing first ${shown.length} of ${matched.length}. Type more to narrow the list.</p>` : '');
-        }
-
-        function toggleAssetSelection(cb) {
-            if (cb.checked) appState.selectedAssetIds.add(cb.value);
-            else appState.selectedAssetIds.delete(cb.value);
-        }
-
-        function startTask(scheduleId) {
-            const sch = appState.schedules.find(s => s.id === scheduleId);
-            if (!sch) return;
-            appState.activeScheduleId = sch.id;
-            appState.selectedAssetIds = new Set([String(sch.assetId)]);
-            document.getElementById('ppmLocationInput').value = sch.location;
-            filterAssetsByLocation();
-            document.getElementById('activeTaskText').innerText = `Working on ${sch.id}: ${sch.assetName || sch.assetId} (${sch.location}) - ${sch.frequency}, due ${sch.dueDate}`;
-            document.getElementById('activeTaskBanner').classList.remove('hidden');
-            switchTab('perform');
-        }
-
-        function clearActiveTask() {
-            appState.activeScheduleId = null;
-            document.getElementById('activeTaskBanner').classList.add('hidden');
-        }
-
-        // Resize + compress photos so uploads stay small and fast on mobile data
-        function readImageCompressed(file, maxDim = 1200, quality = 0.7) {
-            return new Promise((resolve, reject) => {
-                if (!file) return resolve('');
-                const reader = new FileReader();
-                reader.onerror = () => reject(new Error('Could not read photo'));
-                reader.onload = () => {
-                    const img = new Image();
-                    img.onerror = () => reject(new Error('Could not load photo'));
-                    img.onload = () => {
-                        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-                        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
-                        const canvas = document.createElement('canvas');
-                        canvas.width = w; canvas.height = h;
-                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        resolve(canvas.toDataURL('image/jpeg', quality));
-                    };
-                    img.src = reader.result;
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        async function submitPPMRecord() {
-            const ids = Array.from(appState.selectedAssetIds);
-            if (ids.length === 0) {
-                showToast("Please select at least one asset to perform PPM.", "error");
-                return;
-            }
-            const dateVal = document.getElementById('ppmDateTime').value;
-            if (!dateVal) {
-                showToast("Please set the date and time of the service.", "error");
-                return;
-            }
-
-            const btn = document.getElementById('submitPpmBtn');
-            btn.disabled = true;
-            btn.innerText = 'Preparing photos...';
-
-            let photoBefore = '', photoAfter = '';
-            try {
-                photoBefore = await readImageCompressed(document.getElementById('photoBeforeInput').files[0]);
-                photoAfter = await readImageCompressed(document.getElementById('photoAfterInput').files[0]);
-            } catch (err) {
-                showToast(err.message, "error");
-                btn.disabled = false;
-                btn.innerText = 'Submit PPM Record for Supervisor Review';
-                return;
-            }
-
-            const serviceType = document.getElementById('ppmServiceType').value;
-            const notes = document.getElementById('ppmWorkNotes').value;
-            const newRecords = [];
-
-            ids.forEach(id => {
-                const asset = appState.assets.find(a => String(a.id) === id);
-                if (!asset) return;
-                newRecords.push({
-                    id: genId('REC'),
-                    assetId: asset.id,
-                    assetName: asset.name,
-                    location: asset.location,
-                    technician: appState.currentUser.name,
-                    date: dateVal.replace('T', ' '),
-                    type: serviceType,
-                    notes: notes,
-                    photoBefore: photoBefore,   // local preview; Drive link replaces it after sync
-                    photoAfter: photoAfter,
-                    status: 'Pending',
-                    approvedBy: '',
-                    _pending: true
-                });
-            });
-
-            if (newRecords.length === 0) {
-                showToast("Selected assets were not found. Please reselect.", "error");
-                btn.disabled = false;
-                btn.innerText = 'Submit PPM Record for Supervisor Review';
-                return;
-            }
-
-            newRecords.slice().reverse().forEach(r => appState.records.unshift(r));
-
-            // Mark the linked schedule complete
-            let completedScheduleId = null;
-            if (appState.activeScheduleId) {
-                const sch = appState.schedules.find(s => s.id === appState.activeScheduleId);
-                if (sch && ids.includes(String(sch.assetId))) {
-                    sch.status = 'Completed';
-                    completedScheduleId = sch.id;
-                }
-            }
-
-            btn.innerText = 'Sending to Google Sheets...';
-            const sent = await postToSheets({
-                action: 'addRecords',
-                records: newRecords.map(r => ({ ...stripLocal(r), photoBefore: '', photoAfter: '' })),
-                photoBeforeData: photoBefore,
-                photoAfterData: photoAfter
-            });
-            if (completedScheduleId) await postToSheets({ action: 'updateSchedule', id: completedScheduleId, status: 'Completed' });
-
-            // Reset form
-            document.getElementById('ppmWorkNotes').value = '';
-            document.getElementById('photoBeforeInput').value = '';
-            document.getElementById('photoAfterInput').value = '';
-            document.getElementById('ppmLocationInput').value = '';
-            appState.selectedAssetIds = new Set();
-            clearActiveTask();
-            filterAssetsByLocation();
-            btn.disabled = false;
-            btn.innerText = 'Submit PPM Record for Supervisor Review';
-
-            showToast(sent ? `${newRecords.length} PPM record(s) submitted for review.` : `${newRecords.length} record(s) saved on this device only.`, sent ? "success" : "warn");
-            renderAllViews();
-            switchTab(appState.role === 'technician' ? 'myTasks' : 'review');
-
-            // Pull back the saved copy (with Drive photo links) once the sheet has had time to write
-            if (sent) setTimeout(() => loadDataFromGoogleSheets(), 6000);
-        }
-
-        // ---------- Review ----------
-        async function approveRecord(recordId, status) {
-            const record = appState.records.find(r => r.id === recordId);
-            if (!record) return;
-            record.status = status;
-            record.approvedBy = appState.currentUser.name;
-            renderAllViews();
-            await postToSheets({ action: 'approveRecord', id: recordId, status: status, approver: appState.currentUser.name });
-            showToast(`Record ${recordId} marked as ${status}.`, "success");
-        }
-
-        function viewPhotos(recordId) {
-            const r = appState.records.find(x => x.id === recordId);
-            if (!r) return;
-            document.getElementById('photoModalTitle').innerText = `${r.assetName} (${r.location}) - ${r.id}`;
-            const block = (label, src) => `
-                <div class="space-y-2">
-                    <p class="text-xs font-semibold text-gray-300">${label}</p>
-                    ${src ? `<img src="${esc(src)}" alt="${label}" class="w-full rounded-xl border border-navyslate/50 bg-darknavy" referrerpolicy="no-referrer">`
-                          : `<div class="text-xs text-gray-500 italic border border-dashed border-navyslate/60 rounded-xl p-6 text-center">No photo</div>`}
-                </div>`;
-            document.getElementById('photoModalBody').innerHTML =
-                block('Before service', r.photoBefore) + block('After service', r.photoAfter) +
-                `<div class="md:col-span-2"><p class="text-xs font-semibold text-gray-300 mb-1">Work performed</p><p class="text-sm text-gray-200 whitespace-pre-wrap">${esc(r.notes) || '<span class="text-gray-500 italic">No notes</span>'}</p></div>`;
-            document.getElementById('photoModal').classList.remove('hidden');
-            document.getElementById('photoModal').classList.add('flex');
-        }
-
-        function closePhotoModal() {
-            document.getElementById('photoModal').classList.add('hidden');
-            document.getElementById('photoModal').classList.remove('flex');
-        }
-
-        // ---------- Schedules ----------
-        function openAssignModal() {
-            if (appState.assets.length === 0 || appState.technicians.length === 0) {
-                showToast("Add at least one asset and one technician first.", "warn");
-                return;
-            }
-            document.getElementById('assignAssetSelect').innerHTML = appState.assets.map(a => `<option value="${esc(a.id)}">${esc(a.name)} (${esc(a.location)})</option>`).join('');
-            document.getElementById('assignTechSelect').innerHTML = appState.technicians.map(t => `<option value="${esc(t.name)}">${esc(t.name)} - ${esc(t.role)}</option>`).join('');
-            document.getElementById('assignModal').classList.remove('hidden');
-            document.getElementById('assignModal').classList.add('flex');
-        }
-
-        function closeAssignModal() {
-            document.getElementById('assignModal').classList.add('hidden');
-            document.getElementById('assignModal').classList.remove('flex');
-        }
-
-        async function saveNewSchedule() {
-            const assetId = document.getElementById('assignAssetSelect').value;
-            const asset = appState.assets.find(a => String(a.id) === assetId);
-            const dueDate = document.getElementById('assignDueDate').value;
-            if (!asset) { showToast("Select an asset.", "error"); return; }
-            if (!dueDate) { showToast("Choose a due date.", "error"); return; }
-
-            const newSch = {
-                id: genId('SCH'),
-                assetId: asset.id,
-                assetName: asset.name,
-                location: asset.location,
-                frequency: document.getElementById('assignFrequency').value,
-                dueDate: dueDate,
-                assignedTech: document.getElementById('assignTechSelect').value,
-                status: 'Scheduled',
-                _pending: true
-            };
-            appState.schedules.unshift(newSch);
-            closeAssignModal();
-            renderAllViews();
-            const sent = await postToSheets({ action: 'addSchedule', data: stripLocal(newSch) });
-            showToast(sent ? "New schedule assigned and saved." : "Schedule saved on this device only.", sent ? "success" : "warn");
-        }
-
-        // ---------- Technicians ----------
-        function openUserModal() {
-            ['userNameInput', 'userRoleInput', 'userSpecialtyInput'].forEach(id => document.getElementById(id).value = '');
-            document.getElementById('userModal').classList.remove('hidden');
-            document.getElementById('userModal').classList.add('flex');
-        }
-
-        function closeUserModal() {
-            document.getElementById('userModal').classList.add('hidden');
-            document.getElementById('userModal').classList.remove('flex');
-        }
-
-        async function saveNewTechnician() {
-            const name = document.getElementById('userNameInput').value.trim();
-            const role = document.getElementById('userRoleInput').value.trim();
-            const specialty = document.getElementById('userSpecialtyInput').value.trim();
-            if (!name) { showToast("Enter the technician's full name.", "error"); return; }
-            if (appState.technicians.some(t => t.name.toLowerCase() === name.toLowerCase())) {
-                showToast("A technician with this name already exists.", "error");
-                return;
-            }
-            const tech = { id: genId('TEC'), name, role: role || 'Technician', specialty: specialty || 'General', status: 'Available', _pending: true };
-            appState.technicians.push(tech);
-            closeUserModal();
-            renderAllViews();
-            const sent = await postToSheets({ action: 'addTechnician', data: stripLocal(tech) });
-            showToast(sent ? "Technician added." : "Technician saved on this device only.", sent ? "success" : "warn");
-        }
-
-        async function toggleTechnicianStatus(techId) {
-            const t = appState.technicians.find(x => x.id === techId);
-            if (!t) return;
-            t.status = t.status === 'On Leave' ? 'Available' : 'On Leave';
-            renderAllViews();
-            await postToSheets({ action: 'updateTechnician', id: t.id, updates: { status: t.status } });
-        }
-
-        // ---------- Asset import (Excel / CSV) ----------
-        const ASSET_COLUMN_ALIASES = {
-            id: ['id', 'assetid', 'assetno', 'assetcode', 'tag', 'assettag'],
-            building: ['building', 'tower', 'block', 'buildingname'],
-            location: ['location', 'apt', 'apartment', 'apartmentno', 'unit', 'unitno', 'area', 'locationapt', 'room', 'floor'],
-            type: ['type', 'assettype', 'category', 'assetcategory', 'system'],
-            name: ['name', 'assetname', 'description', 'equipment', 'equipmentname'],
-            model: ['model', 'modelno', 'modelnumber'],
-            serial: ['serial', 'serialno', 'serialnumber', 'sn'],
-            status: ['status', 'condition', 'state']
-        };
-
-        function normKey(k) { return String(k).toLowerCase().replace(/[^a-z0-9]/g, ''); }
-
-        function mapAssetRow(row, index) {
-            const lookup = {};
-            Object.keys(row).forEach(k => { lookup[normKey(k)] = row[k]; });
-            const out = {};
-            Object.keys(ASSET_COLUMN_ALIASES).forEach(field => {
-                const hit = ASSET_COLUMN_ALIASES[field].find(alias => lookup[alias] !== undefined && String(lookup[alias]).trim() !== '');
-                out[field] = hit ? String(lookup[hit]).trim() : '';
-            });
-            if (!out.name && !out.type && !out.location) return null; // blank row
-            if (!out.id) out.id = 'AST-' + String(Date.now()).slice(-6) + '-' + (index + 1);
-            if (!out.status) out.status = 'Active';
-            return out;
-        }
-
-        async function handleExcelUpload(event) {
-            const input = event.target;
-            const file = input.files[0];
-            if (!file) return;
-            try {
-                if (typeof XLSX === 'undefined') throw new Error("Excel reader failed to load. Check your internet connection and retry.");
-                const buffer = await file.arrayBuffer();
-                const wb = XLSX.read(buffer, { type: 'array' });
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
-                const assets = rows.map(mapAssetRow).filter(Boolean);
-                if (assets.length === 0) throw new Error("No assets found. Check that the first row contains column headings (Asset ID, Building, Location, Asset Type, Asset Name).");
-
-                let added = 0, updated = 0;
-                assets.forEach(a => {
-                    const idx = appState.assets.findIndex(x => String(x.id) === a.id);
-                    if (idx > -1) { appState.assets[idx] = { ...a, _pending: true }; updated++; }
-                    else { appState.assets.push({ ...a, _pending: true }); added++; }
-                });
+        function deleteAsset(id) {
+            if (confirm(`Are you sure you want to delete asset ID: ${id}?`)) {
+                assets = assets.filter(a => a.id !== id);
+                saveStateToStorage();
                 renderAllViews();
-                showToast(`Imported ${assets.length} assets (${added} new, ${updated} updated). Syncing...`, "success");
-
-                const CHUNK = 300;
-                let ok = true;
-                for (let i = 0; i < assets.length; i += CHUNK) {
-                    ok = (await postToSheets({ action: 'uploadAssets', assets: assets.slice(i, i + CHUNK) })) && ok;
-                }
-                if (ok) {
-                    showToast("Assets saved to Google Sheets.", "success");
-                    setTimeout(() => loadDataFromGoogleSheets(), 4000);
-                }
-            } catch (err) {
-                console.error(err);
-                showToast(err.message || "Could not read that file.", "error");
-            } finally {
-                input.value = '';
+                showToast("Asset removed from directory.", "info");
             }
+        }
+
+        // --- EXCEL / CSV IMPORT VIA SHEETJS ---
+        function handleExcelUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    const parsedData = XLSX.utils.sheet_to_json(sheet);
+
+                    if (parsedData.length === 0) {
+                        showToast("Uploaded sheet contains no readable data.", "error");
+                        return;
+                    }
+
+                    let addedCount = 0;
+                    parsedData.forEach((row, idx) => {
+                        const newAsset = {
+                            id: row['Asset ID'] || row['id'] || `AST-${Date.now().toString().slice(-4)}-${idx}`,
+                            building: row['Building'] || row['building'] || 'Main Building',
+                            location: row['Location'] || row['location'] || row['Location / Apt'] || 'General',
+                            type: row['Asset Type'] || row['type'] || 'HVAC',
+                            name: row['Asset Name'] || row['name'] || 'Unnamed Equipment',
+                            status: row['Status'] || row['status'] || 'Operational'
+                        };
+                        
+                        // Prevent duplicate IDs by updating if exists
+                        const existingIdx = assets.findIndex(a => a.id === newAsset.id);
+                        if (existingIdx >= 0) {
+                            assets[existingIdx] = newAsset;
+                        } else {
+                            assets.push(newAsset);
+                            addedCount++;
+                        }
+                    });
+
+                    saveStateToStorage();
+                    renderAllViews();
+                    showToast(`Successfully processed ${parsedData.length} records (${addedCount} new added)!`, "success");
+                } catch (err) {
+                    console.error(err);
+                    showToast("Error parsing Excel/CSV file.", "error");
+                }
+            };
+            reader.readAsArrayBuffer(file);
         }
 
         function downloadAssetTemplate() {
-            const csv = 'Asset ID,Building,Location,Asset Type,Asset Name,Model,Serial,Status\n' +
-                'AST-201,Tower A,Apt 201,FCU AC Unit,Living Room FCU,Carrier 38QN,CR10001,Active\n' +
-                'AST-202,Tower A,Apt 201,Exhaust Fan,Bathroom Extractor,Systemair,SY10002,Active\n';
-            const blob = new Blob([csv], { type: 'text/csv' });
+            const template = "Asset ID,Building,Location,Asset Type,Asset Name,Status\nAST-007,Tower C,Apt 301,HVAC,Split AC 1.5TR,Operational\nAST-008,Tower C,Basement,Plumbing,Sump Pump 2,Operational";
+            const blob = new Blob([template], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'asset_master_template.csv';
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'PPM_Asset_Import_Template.csv');
             a.click();
-            URL.revokeObjectURL(a.href);
+            showToast("CSV Template Downloaded.", "info");
         }
 
-        // ---------- Notifications ----------
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            const borderColor = type === 'success' ? 'border-accentteal text-accentteal' : type === 'error' ? 'border-red-400 text-red-400' : 'border-amber-400 text-amber-300';
-            toast.className = `bg-navycard border ${borderColor} px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center space-x-2 max-w-xs`;
-            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${esc(message)}</span>`;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4500);
+        // --- PERFORM PPM EXECUTION & SUBMISSION ---
+        function filterAssetsByLocation() {
+            const locQuery = document.getElementById('ppmLocationInput').value.toLowerCase().trim();
+            const select = document.getElementById('ppmAssetSelect');
+            select.innerHTML = '<option value="">-- Select Asset --</option>';
+
+            const filtered = assets.filter(a => a.location.toLowerCase().includes(locQuery) || a.building.toLowerCase().includes(locQuery));
+            filtered.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                opt.innerText = `${a.name} (${a.id} - ${a.location})`;
+                select.appendChild(opt);
+            });
         }
 
-        // ---------- Google Sheets sync ----------
-        function setSync(state) {
+        function populateAssetDropdowns() {
+            const ppmSelect = document.getElementById('ppmAssetSelect');
+            const schedSelect = document.getElementById('mScheduleAsset');
+            
+            if (ppmSelect) {
+                ppmSelect.innerHTML = '<option value="">-- Select Asset --</option>';
+                assets.forEach(a => {
+                    ppmSelect.innerHTML += `<option value="${a.id}">${a.name} (${a.id} - ${a.location})</option>`;
+                });
+            }
+
+            if (schedSelect) {
+                schedSelect.innerHTML = '<option value="">-- Select Target Asset --</option>';
+                assets.forEach(a => {
+                    schedSelect.innerHTML += `<option value="${a.id}">${a.name} (${a.id} - ${a.location})</option>`;
+                });
+            }
+        }
+
+        function handlePhotoPreview(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('photoFileName').innerText = file.name;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                currentPpmPhotoData = evt.target.result;
+                document.getElementById('photoPreviewImg').src = currentPpmPhotoData;
+                document.getElementById('photoPreviewContainer').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removePhotoPreview() {
+            currentPpmPhotoData = null;
+            document.getElementById('ppmPhotoInput').value = '';
+            document.getElementById('photoFileName').innerText = 'No image uploaded';
+            document.getElementById('photoPreviewContainer').classList.add('hidden');
+        }
+
+        function submitPPMRecord() {
+            const assetId = document.getElementById('ppmAssetSelect').value;
+            const serviceType = document.getElementById('ppmServiceType').value;
+            const dateTime = document.getElementById('ppmDateTime').value;
+            const notes = document.getElementById('ppmWorkNotes').value.trim();
+
+            if (!assetId || !dateTime || !notes) {
+                showToast("Please complete all required fields (Asset, Date, Notes).", "error");
+                return;
+            }
+
+            const targetAsset = assets.find(a => a.id === assetId);
+
+            const newRecord = {
+                id: `PPM-REC-${Date.now().toString().slice(-5)}`,
+                assetId: assetId,
+                assetName: targetAsset ? `${targetAsset.name} (${targetAsset.location})` : assetId,
+                technician: currentRole === 'admin' ? "Ishan Madhushanka" : "Saman Kumara",
+                serviceType: serviceType,
+                dateTime: dateTime.replace('T', ' '),
+                notes: notes,
+                photo: currentPpmPhotoData,
+                status: 'Pending Supervisor Review',
+                submittedAt: new Date().toISOString()
+            };
+
+            reviews.unshift(newRecord);
+
+            // If triggered from scheduled task, mark schedule as completed
+            if (activeScheduleId) {
+                const sched = schedules.find(s => s.id === activeScheduleId);
+                if (sched) sched.status = 'In Review';
+                clearActiveTask();
+            }
+
+            saveStateToStorage();
+            renderAllViews();
+            resetPPMForm();
+            showToast("PPM record submitted successfully! Sent to review queue.", "success");
+            
+            if (currentRole === 'admin') {
+                switchTab('review');
+            }
+        }
+
+        function resetPPMForm() {
+            document.getElementById('ppmLocationInput').value = '';
+            document.getElementById('ppmWorkNotes').value = '';
+            removePhotoPreview();
+            populateAssetDropdowns();
+            setInitialDateTime();
+        }
+
+        // --- SUPERVISOR REVIEW QUEUE FUNCTIONS ---
+        function renderReviewQueue() {
+            const tbody = document.getElementById('reviewTableBody');
+            if (!tbody) return;
+
+            if (reviews.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-400 italic">Review queue is empty. Submissions will appear here.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = reviews.map(r => `
+                <tr class="hover:bg-navyslate/20 transition">
+                    <td class="p-4 font-bold text-accentcyan">${r.id}</td>
+                    <td class="p-4 font-medium text-white">${r.assetName}</td>
+                    <td class="p-4 text-xs">${r.technician}</td>
+                    <td class="p-4"><span class="bg-darknavy px-2 py-1 rounded text-xs border border-navyslate/50">${r.serviceType}</span></td>
+                    <td class="p-4 text-xs text-gray-300">${r.dateTime}</td>
+                    <td class="p-4">
+                        ${r.photo ? `
+                            <button onclick="viewPhoto('${r.photo}')" class="text-accentteal hover:underline text-xs flex items-center">
+                                <i class="fa-solid fa-image mr-1"></i> View Photo
+                            </button>
+                        ` : `<span class="text-xs text-gray-500">None</span>`}
+                    </td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            r.status === 'Approved' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                            r.status === 'Rejected' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        }">
+                            ${r.status}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right space-x-1">
+                        ${r.status === 'Pending Supervisor Review' ? `
+                            <button onclick="approveReview('${r.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs transition" title="Approve">
+                                <i class="fa-solid fa-check"></i>
+                            </button>
+                            <button onclick="rejectReview('${r.id}')" class="bg-red-600 hover:bg-red-500 text-white px-2.5 py-1 rounded text-xs transition" title="Reject">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        ` : `
+                            <button onclick="deleteReview('${r.id}')" class="text-gray-400 hover:text-red-400 px-2 py-1 text-xs">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        `}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function approveReview(id) {
+            const rec = reviews.find(r => r.id === id);
+            if (rec) {
+                rec.status = 'Approved';
+                // Update corresponding target asset status to Operational
+                const asset = assets.find(a => a.id === rec.assetId);
+                if (asset) asset.status = 'Operational';
+
+                saveStateToStorage();
+                renderAllViews();
+                showToast("Service entry verified & approved!", "success");
+            }
+        }
+
+        function rejectReview(id) {
+            const rec = reviews.find(r => r.id === id);
+            if (rec) {
+                rec.status = 'Rejected';
+                saveStateToStorage();
+                renderAllViews();
+                showToast("Service entry rejected.", "error");
+            }
+        }
+
+        function deleteReview(id) {
+            reviews = reviews.filter(r => r.id !== id);
+            saveStateToStorage();
+            renderAllViews();
+            showToast("Review log deleted.", "info");
+        }
+
+        function viewPhoto(photoSrc) {
+            document.getElementById('photoModalImg').src = photoSrc;
+            openModal('photoModal');
+        }
+
+        // --- SCHEDULES & ASSIGNMENTS FUNCTIONS ---
+        function renderSchedulesTable() {
+            const tbody = document.getElementById('scheduleTableBody');
+            if (!tbody) return;
+
+            if (schedules.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400 italic">No maintenance schedules planned. Click "Create PPM Schedule".</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = schedules.map(s => `
+                <tr class="hover:bg-navyslate/20 transition">
+                    <td class="p-4 font-bold text-accentcyan">${s.id}</td>
+                    <td class="p-4 font-medium text-white">${s.assetName}</td>
+                    <td class="p-4"><span class="bg-navyslate/60 text-xs px-2.5 py-1 rounded-md text-gray-200 border border-navyslate/40">${s.frequency}</span></td>
+                    <td class="p-4 text-xs text-gray-300">${s.dueDate}</td>
+                    <td class="p-4 text-xs">${s.techName}</td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            s.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        }">
+                            ${s.status}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteSchedule('${s.id}')" class="text-gray-400 hover:text-red-400 px-2 py-1 text-xs" title="Delete Schedule">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderMyTasks() {
+            const tbody = document.getElementById('myTasksTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = schedules.map(s => `
+                <tr class="hover:bg-navyslate/20 transition">
+                    <td class="p-4 font-bold text-accentcyan">${s.id}</td>
+                    <td class="p-4 font-medium text-white">${s.assetName}</td>
+                    <td class="p-4 text-xs">${s.frequency}</td>
+                    <td class="p-4 text-xs text-amber-300 font-medium">${s.dueDate}</td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                            ${s.status}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <button onclick="startScheduledTask('${s.id}')" class="bg-accentcyan hover:bg-accentteal text-darknavy font-bold px-3 py-1.5 rounded-lg text-xs transition">
+                            <i class="fa-solid fa-play mr-1"></i> Perform PPM
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function startScheduledTask(schedId) {
+            const sched = schedules.find(s => s.id === schedId);
+            if (!sched) return;
+
+            activeScheduleId = sched.id;
+            document.getElementById('activeTaskText').innerText = `Executing Scheduled Task: ${sched.id} - ${sched.assetName}`;
+            document.getElementById('activeTaskBanner').classList.remove('hidden');
+
+            switchTab('perform');
+            document.getElementById('ppmAssetSelect').value = sched.assetId;
+        }
+
+        function clearActiveTask() {
+            activeScheduleId = null;
+            document.getElementById('activeTaskBanner').classList.add('hidden');
+        }
+
+        function deleteSchedule(id) {
+            schedules = schedules.filter(s => s.id !== id);
+            saveStateToStorage();
+            renderAllViews();
+            showToast("Schedule removed.", "info");
+        }
+
+        // --- USER & TECHNICIAN MANAGEMENT FUNCTIONS ---
+        function renderUserTable() {
+            const tbody = document.getElementById('userTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = technicians.map(t => `
+                <tr class="hover:bg-navyslate/20 transition">
+                    <td class="p-4 font-bold text-accentcyan">${t.id}</td>
+                    <td class="p-4 font-medium text-white">${t.name}</td>
+                    <td class="p-4 text-xs text-gray-300">${t.role}</td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            ${t.status}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteTech('${t.id}')" class="text-gray-400 hover:text-red-400 px-2 py-1 text-xs">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Also update tech options in schedule modal
+            const techSelect = document.getElementById('mScheduleTech');
+            if (techSelect) {
+                techSelect.innerHTML = technicians.map(t => `<option value="${t.name}">${t.name} (${t.role})</option>`).join('');
+            }
+        }
+
+        function deleteTech(id) {
+            technicians = technicians.filter(t => t.id !== id);
+            saveStateToStorage();
+            renderAllViews();
+            showToast("Technician removed from roster.", "info");
+        }
+
+        // --- MODAL HANDLERS & CREATION ---
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function openAddAssetModal() {
+            document.getElementById('mAssetId').value = `AST-${String(assets.length + 1).padStart(3, '0')}`;
+            document.getElementById('mAssetBuilding').value = '';
+            document.getElementById('mAssetLocation').value = '';
+            document.getElementById('mAssetName').value = '';
+            openModal('assetModal');
+        }
+
+        function saveAssetModal() {
+            const id = document.getElementById('mAssetId').value.trim();
+            const building = document.getElementById('mAssetBuilding').value.trim();
+            const location = document.getElementById('mAssetLocation').value.trim();
+            const type = document.getElementById('mAssetType').value;
+            const name = document.getElementById('mAssetName').value.trim();
+            const status = document.getElementById('mAssetStatus').value;
+
+            if (!id || !name || !location) {
+                showToast("Please complete required asset fields.", "error");
+                return;
+            }
+
+            assets.push({ id, building: building || 'Main Building', location, type, name, status });
+            saveStateToStorage();
+            renderAllViews();
+            closeModal('assetModal');
+            showToast("New asset added to directory!", "success");
+        }
+
+        function openAssignModal() {
+            openModal('scheduleModal');
+        }
+
+        function saveScheduleModal() {
+            const assetId = document.getElementById('mScheduleAsset').value;
+            const freq = document.getElementById('mScheduleFreq').value;
+            const dueDate = document.getElementById('mScheduleDueDate').value;
+            const techName = document.getElementById('mScheduleTech').value;
+
+            if (!assetId || !dueDate) {
+                showToast("Please choose target asset and due date.", "error");
+                return;
+            }
+
+            const targetAsset = assets.find(a => a.id === assetId);
+
+            schedules.push({
+                id: `SCH-${Date.now().toString().slice(-4)}`,
+                assetId: assetId,
+                assetName: targetAsset ? `${targetAsset.name} (${targetAsset.location})` : assetId,
+                frequency: freq,
+                dueDate: dueDate,
+                techName: techName,
+                status: 'Pending'
+            });
+
+            saveStateToStorage();
+            renderAllViews();
+            closeModal('scheduleModal');
+            showToast("PPM Schedule created and assigned!", "success");
+        }
+
+        function openUserModal() { openModal('userModal'); }
+
+        function saveUserModal() {
+            const name = document.getElementById('mTechName').value.trim();
+            const role = document.getElementById('mTechRole').value;
+
+            if (!name) {
+                showToast("Please specify technician full name.", "error");
+                return;
+            }
+
+            technicians.push({
+                id: `TECH-${Date.now().toString().slice(-3)}`,
+                name: name,
+                role: role,
+                status: 'On Duty'
+            });
+
+            saveStateToStorage();
+            renderAllViews();
+            closeModal('userModal');
+            showToast("Technician profile created!", "success");
+        }
+
+        // --- GOOGLE SHEETS SYNC SIMULATOR TOGGLE ---
+        function toggleSync() {
             const dot = document.getElementById('syncDot');
             const text = document.getElementById('syncText');
-            const map = {
-                syncing: ['bg-amber-400', 'Syncing...'],
-                ok: ['bg-accentteal', 'Synced ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })],
-                offline: ['bg-red-400', 'Offline - using local data'],
-                off: ['bg-gray-500', 'Not synced']
-            };
-            const [color, label] = map[state] || map.off;
-            dot.className = 'w-2 h-2 rounded-full ' + color;
-            text.innerText = label;
+            
+            if (text.innerText === 'Synced') {
+                text.innerText = 'Not synced';
+                text.className = 'text-gray-400 font-medium';
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-gray-500';
+                showToast("Google Sheets Sync paused.", "info");
+            } else {
+                text.innerText = 'Synced';
+                text.className = 'text-emerald-400 font-medium';
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
+                showToast("Google Sheets Sync active.", "success");
+            }
         }
 
-        // Keep anything created locally that the sheet has not returned yet
-        function mergePending(local, remote) {
-            const remoteIds = new Set(remote.map(r => String(r.id)));
-            return remote.concat(local.filter(l => l._pending && !remoteIds.has(String(l.id))));
-        }
+        // --- CHART.JS INITIALIZATION & UPDATES ---
+        function initCharts() {
+            const ctx1 = document.getElementById('complianceChart')?.getContext('2d');
+            const ctx2 = document.getElementById('assetCategoryChart')?.getContext('2d');
 
-        async function loadDataFromGoogleSheets(manual) {
-            if (!SYNC_ENABLED) { setSync('off'); return; }
-            setSync('syncing');
-            try {
-                const response = await fetch(`${GOOGLE_API_URL}?action=getAllData`);
-                const data = await response.json();
-                if (!data || data.ok !== true) throw new Error((data && data.error) || 'Unexpected response');
-
-                // Newest records first
-                const remoteRecords = (data.records || []).slice().reverse();
-                // Local previews of photos stay visible until the Drive link arrives
-                const localById = {};
-                appState.records.forEach(r => { localById[r.id] = r; });
-                remoteRecords.forEach(r => {
-                    const l = localById[r.id];
-                    if (l) {
-                        if (!r.photoBefore && l.photoBefore && l._pending) r.photoBefore = l.photoBefore;
-                        if (!r.photoAfter && l.photoAfter && l._pending) r.photoAfter = l.photoAfter;
+            if (ctx1) {
+                complianceChartInstance = new Chart(ctx1, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Approved & Compliant', 'Pending Review', 'Rejected / Action Needed'],
+                        datasets: [{
+                            data: [0, 0, 0],
+                            backgroundColor: ['#00f5d4', '#fbbf24', '#f87171'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { labels: { color: '#9ca3af', font: { size: 11 } }, position: 'bottom' }
+                        }
                     }
                 });
-
-                appState.assets = mergePending(appState.assets, data.assets || []);
-                appState.records = mergePending(appState.records, remoteRecords);
-                appState.schedules = mergePending(appState.schedules, data.schedules || []);
-                appState.technicians = mergePending(appState.technicians, data.technicians || []);
-
-                renderAllViews();
-                setSync('ok');
-                if (manual) showToast("Data refreshed from Google Sheets.", "success");
-            } catch (err) {
-                console.error("Google Sheets sync failed", err);
-                setSync('offline');
-                if (manual) showToast("Could not reach Google Sheets. Check the Apps Script deployment.", "error");
             }
+
+            if (ctx2) {
+                categoryChartInstance = new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: ['HVAC', 'Plumbing', 'Electrical', 'Elevators', 'Fire Safety'],
+                        datasets: [{
+                            label: 'Asset Count',
+                            data: [0, 0, 0, 0, 0],
+                            backgroundColor: '#00b4d8',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { ticks: { color: '#9ca3af', precision: 0 }, grid: { color: 'rgba(58, 80, 107, 0.3)' } },
+                            x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+
+            updateDashboardCharts();
         }
 
-        // POSTs as text/plain so the browser skips the CORS preflight that Apps Script cannot answer
-        async function postToSheets(payload) {
-            if (!SYNC_ENABLED) return false;
-            try {
-                await fetch(GOOGLE_API_URL, {
-                    method: "POST",
-                    mode: "no-cors",
-                    headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify(payload)
-                });
-                return true;
-            } catch (err) {
-                console.error("Sync error", err);
-                setSync('offline');
-                showToast("Could not reach Google Sheets. Saved on this device only.", "warn");
-                return false;
-            }
+        function updateDashboardCharts() {
+            if (!complianceChartInstance || !categoryChartInstance) return;
+
+            const approved = reviews.filter(r => r.status === 'Approved').length;
+            const pending = reviews.filter(r => r.status === 'Pending Supervisor Review').length;
+            const rejected = reviews.filter(r => r.status === 'Rejected').length;
+
+            complianceChartInstance.data.datasets[0].data = [approved, pending, rejected];
+            complianceChartInstance.update();
+
+            const categories = ['HVAC', 'Plumbing', 'Electrical', 'Elevators', 'Fire Safety'];
+            const counts = categories.map(cat => assets.filter(a => a.type === cat).length);
+
+            categoryChartInstance.data.datasets[0].data = counts;
+            categoryChartInstance.update();
+        }
+
+        // --- TOAST NOTIFICATIONS ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-accentcyan text-darknavy';
+            const icon = type === 'success' ? 'fa-circle-check' : type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info';
+
+            toast.className = `${bgColor} text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 transition-all duration-300 transform translate-y-2 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
     </script>
 </body>
 </html>
+```
