@@ -2,7 +2,12 @@
 <html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0b132b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
     <title>PPM Facility Hub - Planned Preventive Maintenance System</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -48,6 +53,24 @@
 </head>
 <body class="bg-darknavy text-gray-100 font-sans min-h-screen flex flex-col">
 
+    <!-- Authentication gate: all app controls are covered until a staff member signs in. -->
+    <div id="loginOverlay" class="fixed inset-0 z-[100] bg-darknavy flex items-center justify-center p-4">
+      <div class="w-full max-w-md bg-navycard border border-navyslate/70 rounded-3xl p-6 sm:p-8 shadow-2xl">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-12 h-12 rounded-2xl bg-accentcyan/15 border border-accentcyan/30 flex items-center justify-center text-accentcyan text-xl"><i class="fa-solid fa-building-shield"></i></div>
+          <div><h1 class="text-xl font-bold text-white">PPM Facility Hub</h1><p class="text-xs text-accentcyan">Secure staff sign-in</p></div>
+        </div>
+        <form id="loginForm" class="space-y-4" onsubmit="event.preventDefault(); loginUser();">
+          <div><label for="loginUsername" class="block text-xs text-gray-300 font-semibold mb-1.5">Staff ID or username</label><input id="loginUsername" autocomplete="username" required placeholder="Admin or technician ID" class="w-full bg-darknavy border border-navyslate rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentcyan"></div>
+          <div><label for="loginPin" class="block text-xs text-gray-300 font-semibold mb-1.5">PIN</label><input id="loginPin" type="password" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12" autocomplete="current-password" required placeholder="Enter your PIN" class="w-full bg-darknavy border border-navyslate rounded-xl p-3 text-sm tracking-[0.3em] text-white focus:outline-none focus:border-accentcyan"></div>
+          <p id="loginMessage" class="text-xs text-gray-400" aria-live="polite">Online sign-in verifies your account. Previously signed-in staff can use their PIN offline on this device.</p>
+          <button id="loginButton" type="submit" class="w-full bg-accentcyan hover:bg-accentteal text-darknavy font-bold rounded-xl py-3 text-sm transition"><i class="fa-solid fa-lock mr-2"></i>Sign In</button>
+          <button type="button" onclick="loginOffline()" class="w-full bg-navyslate/50 hover:bg-navyslate text-gray-200 font-semibold rounded-xl py-2.5 text-xs border border-navyslate">Use saved offline login</button>
+        </form>
+        <p class="mt-5 text-[10px] leading-relaxed text-gray-500">For first setup, use username <b>admin</b> and the supervisor PIN configured in the Apps Script backend. Technician PINs are assigned by an administrator.</p>
+      </div>
+    </div>
+
     <!-- Toast Notification Container -->
     <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
@@ -70,13 +93,7 @@
                 <span id="syncText" class="text-emerald-400 font-medium">Synced</span>
             </div>
             
-            <div class="bg-darknavy px-2.5 py-1.5 rounded-lg border border-navyslate/50 flex items-center space-x-2">
-                <span class="text-xs text-gray-400 font-medium hidden md:inline">Active Mode:</span>
-                <select id="roleSwitcher" onchange="switchRole(this.value)" class="bg-navyslate text-white text-xs font-semibold px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-accentcyan cursor-pointer">
-                    <option value="admin">Admin / Supervisor</option>
-                    <option value="technician">Technician View</option>
-                </select>
-            </div>
+            <button id="logoutButton" onclick="logoutUser()" class="bg-navyslate/70 hover:bg-navyslate px-3 py-2 rounded-lg border border-navyslate/50 text-xs font-semibold text-gray-200" disabled>Log in</button>
 
             <div class="hidden md:flex items-center space-x-2 pl-3 border-l border-navyslate/50">
                 <div class="w-8 h-8 rounded-full bg-accentcyan/20 text-accentcyan font-bold flex items-center justify-center text-sm border border-accentcyan/40" id="userAvatar">IM</div>
@@ -378,16 +395,32 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="space-y-1.5">
                         <label class="text-xs font-semibold text-gray-300">Service Type *</label>
-                        <select id="ppmServiceType" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                        <select id="ppmServiceType" onchange="toggleAmcFields()" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
                             <option value="Monthly Routine PPM">Monthly Routine PPM</option>
                             <option value="Quarterly Servicing">Quarterly Servicing</option>
                             <option value="Annual Overhaul">Annual Overhaul</option>
                             <option value="Corrective Maintenance">Corrective Maintenance</option>
+                            <option value="AMC PPM Service">AMC PPM Service</option>
                         </select>
                     </div>
                     <div class="space-y-1.5">
                         <label class="text-xs font-semibold text-gray-300">Execution Date & Time *</label>
                         <input type="datetime-local" id="ppmDateTime" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                    </div>
+                </div>
+
+                <div id="amcDetailsPanel" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 rounded-xl border border-accentcyan/30 bg-darknavy/60 p-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-gray-300">AMC Company / Contractor *</label>
+                        <input type="text" id="ppmAmcCompany" placeholder="AMC service provider" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-gray-300">AMC Contract / Reference No.</label>
+                        <input type="text" id="ppmAmcContract" placeholder="Contract or PO reference" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                    </div>
+                    <div class="space-y-1.5 md:col-span-2">
+                        <label class="text-xs font-semibold text-gray-300">AMC Visit / Job Card No.</label>
+                        <input type="text" id="ppmAmcVisit" placeholder="Contractor visit number or job card" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
                     </div>
                 </div>
 
@@ -513,9 +546,13 @@
                 <i class="fa-solid fa-calendar-plus text-accentcyan mr-2"></i> Create Maintenance Schedule
             </h3>
             <div class="space-y-3">
-                <div>
-                    <label class="text-xs text-gray-300 font-semibold">Select Target Asset *</label>
-                    <select id="mScheduleAsset" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan"></select>
+                <div class="space-y-2">
+                    <label class="text-xs text-gray-300 font-semibold">Find Target Asset *</label>
+                    <input type="search" id="mScheduleAssetSearch" oninput="filterScheduleAssets()" autocomplete="off" placeholder="Type exact asset ID, apartment, location or name..." class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                    <select id="mScheduleAsset" size="5" onchange="selectScheduleAsset()" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm text-white focus:outline-none focus:border-accentcyan" aria-label="Matching target assets">
+                        <option value="">Type above to find an asset</option>
+                    </select>
+                    <p id="mScheduleAssetHint" class="text-[11px] text-gray-400">Search first; matching assets will appear here. Select one result.</p>
                 </div>
                 <div>
                     <label class="text-xs text-gray-300 font-semibold">Frequency *</label>
@@ -562,10 +599,14 @@
                         <option value="General Facility Tech">General Facility Tech</option>
                     </select>
                 </div>
+                <div>
+                    <label class="text-xs text-gray-300 font-semibold">Technician PIN <span class="text-gray-500">(required for new staff; leave blank to keep current PIN)</span></label>
+                    <input type="password" id="mTechPin" inputmode="numeric" pattern="[0-9]{4,12}" minlength="4" maxlength="12" autocomplete="new-password" placeholder="4–12 digits" class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-2.5 text-sm tracking-widest text-white focus:outline-none focus:border-accentcyan">
+                </div>
             </div>
             <div class="flex justify-end space-x-2 pt-2 border-t border-navyslate/40">
                 <button onclick="closeModal('userModal')" class="bg-navyslate/60 hover:bg-navyslate text-xs text-gray-300 px-4 py-2 rounded-xl transition">Cancel</button>
-                <button onclick="saveUserModal()" class="bg-accentcyan hover:bg-accentteal text-darknavy font-bold text-xs px-5 py-2 rounded-xl transition">Add Technician</button>
+                <button id="saveTechButton" onclick="saveUserModal()" class="bg-accentcyan hover:bg-accentteal text-darknavy font-bold text-xs px-5 py-2 rounded-xl transition">Save Technician</button>
             </div>
         </div>
     </div>
@@ -586,11 +627,8 @@
         // Fresh start: no sample assets or sample schedules.
         const defaultAssets = [];
 
-        const defaultTechs = [
-            { id: "TECH-101", name: "Ishan Madhushanka", role: "HVAC Specialist", status: "On Duty" },
-            { id: "TECH-102", name: "Saman Kumara", role: "Plumbing Engineer", status: "On Duty" },
-            { id: "TECH-103", name: "Kasun Perera", role: "Electrical Specialist", status: "On Duty" }
-        ];
+        // Staff profiles are loaded from Google Sheets after authentication.
+        const defaultTechs = [];
 
         const defaultSchedules = [];
 
@@ -599,22 +637,29 @@
         let technicians = JSON.parse(localStorage.getItem('ppm_techs')) || defaultTechs;
         let schedules = JSON.parse(localStorage.getItem('ppm_schedules')) || defaultSchedules;
         let reviews = JSON.parse(localStorage.getItem('ppm_reviews')) || [];
+        let pendingSync = JSON.parse(localStorage.getItem('ppm_pending_sync')) || [];
+        let syncInProgress = false;
         
-        let currentRole = "admin"; // 'admin' or 'technician'
+        let currentRole = null; // assigned only after backend or saved offline PIN verification
+        let currentUser = null;
+        let authToken = sessionStorage.getItem('ppm_auth_token') || '';
+        let editingTechId = null;
         let currentPpmPhotoData = null;
         let activeScheduleId = null;
 
         // Chart Instances
         let complianceChartInstance = null;
         let categoryChartInstance = null;
+        let chartsInitialized = false;
 
         // Initialize App on DOM Load
         window.addEventListener('DOMContentLoaded', () => {
             saveStateToStorage();
             setInitialDateTime();
-            renderAllViews();
-            initCharts();
-            switchRole('admin');
+            updateSyncIndicator();
+            registerPwaAndSync();
+            document.getElementById('logoutButton').disabled = true;
+            document.getElementById('loginUsername').focus();
         });
 
         // Local Storage Persistence
@@ -623,6 +668,7 @@
             localStorage.setItem('ppm_techs', JSON.stringify(technicians));
             localStorage.setItem('ppm_schedules', JSON.stringify(schedules));
             localStorage.setItem('ppm_reviews', JSON.stringify(reviews));
+            localStorage.setItem('ppm_pending_sync', JSON.stringify(pendingSync));
         }
 
         // Set default execution time input to current moment
@@ -632,49 +678,144 @@
             document.getElementById('ppmDateTime').value = now.toISOString().slice(0, 16);
         }
 
-        // Role Switcher Handler
+        // Role is assigned by authenticated identity; it is never selected by the user.
         function switchRole(role) {
-            currentRole = role;
+            if (!currentUser) return;
+            // Never trust a requested role; use the role returned by backend authentication.
+            currentRole = currentUser.role === 'admin' ? 'admin' : 'technician';
             const adminTabs = document.querySelectorAll('.admin-tab');
             const techTabs = document.querySelectorAll('.tech-tab');
             const userAvatar = document.getElementById('userAvatar');
             const userNameDisplay = document.getElementById('userNameDisplay');
             const userRoleDisplay = document.getElementById('userRoleDisplay');
-
-            if (role === 'admin') {
+            const name = currentUser?.name || (currentRole === 'admin' ? 'Admin / Supervisor' : 'Technician');
+            if (currentRole === 'admin') {
                 adminTabs.forEach(tab => tab.classList.remove('hidden'));
-                userNameDisplay.innerText = "Ishan Madhushanka";
-                userRoleDisplay.innerText = "Supervisor";
-                userAvatar.innerText = "IM";
+                techTabs.forEach(tab => tab.classList.remove('hidden'));
+                userRoleDisplay.innerText = 'Admin / Supervisor';
                 switchTab('dashboard');
             } else {
                 adminTabs.forEach(tab => tab.classList.add('hidden'));
-                userNameDisplay.innerText = "Saman Kumara";
-                userRoleDisplay.innerText = "Technician";
-                userAvatar.innerText = "SK";
+                techTabs.forEach(tab => tab.classList.remove('hidden'));
+                userRoleDisplay.innerText = 'Technician';
                 switchTab('perform');
             }
+            userNameDisplay.innerText = name;
+            userAvatar.innerText = name.split(/\s+/).map(p => p[0] || '').join('').slice(0, 2).toUpperCase();
             renderMyTasks();
         }
 
-        // Tab Switching Handler
+        // Tab Switching Handler with role enforcement.
         function switchTab(tabName) {
+            if (!currentUser) return;
+            if (currentRole !== 'admin' && ['dashboard','review','assets','schedule','config','users','reports'].includes(tabName)) tabName = 'perform';
             document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 btn.classList.remove('bg-accentcyan', 'text-darknavy', 'shadow');
                 btn.classList.add('text-gray-300');
             });
-
             const targetView = document.getElementById(`view-${tabName}`);
             const targetBtn = document.getElementById(`tab-${tabName}`);
-
             if (targetView) targetView.classList.remove('hidden');
             if (targetBtn) {
                 targetBtn.classList.add('bg-accentcyan', 'text-darknavy', 'shadow');
                 targetBtn.classList.remove('text-gray-300');
             }
-
             if (tabName === 'dashboard') updateDashboardCharts();
+        }
+
+        const OFFLINE_AUTH_KEY = 'ppm_offline_auth_v1';
+        async function deriveOfflineVerifier(pin, saltText) {
+            const enc = new TextEncoder();
+            const key = await crypto.subtle.importKey('raw', enc.encode(String(pin)), 'PBKDF2', false, ['deriveBits']);
+            const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode(saltText), iterations: 150000, hash: 'SHA-256' }, key, 256);
+            return Array.from(new Uint8Array(bits)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        function setLoginMessage(message, isError = false) {
+            const el = document.getElementById('loginMessage');
+            el.textContent = message;
+            el.className = 'text-xs ' + (isError ? 'text-red-300' : 'text-gray-400');
+        }
+        async function loginUser() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const pin = document.getElementById('loginPin').value.trim();
+            const btn = document.getElementById('loginButton');
+            if (!username || !/^\d{4,12}$/.test(pin)) { setLoginMessage('Enter a username and a 4–12 digit PIN.', true); return; }
+            btn.disabled = true; btn.textContent = 'Verifying…';
+            try {
+                if (!navigator.onLine) throw new Error('You are offline. Use saved offline login if this device has signed in before.');
+                const response = await fetch(GOOGLE_API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'login', username, pin }) });
+                if (!response.ok) throw new Error('Login service returned HTTP ' + response.status);
+                const result = await response.json();
+                if (!result.ok) throw new Error(result.error || 'Invalid username or PIN.');
+                authToken = result.token;
+                sessionStorage.setItem('ppm_auth_token', authToken);
+                currentUser = { id: result.user.id, name: result.user.name, role: result.user.role };
+                currentRole = currentUser.role;
+                const salt = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();
+                const verifier = await deriveOfflineVerifier(pin, salt);
+                localStorage.setItem(OFFLINE_AUTH_KEY, JSON.stringify({ username: username.toLowerCase(), user: currentUser, salt, verifier, savedAt: new Date().toISOString() }));
+                document.getElementById('loginPin').value = '';
+                await fetchGoogleSheetData(true);
+                enterAuthenticatedApp();
+                if (navigator.onLine) syncPendingRecords();
+            } catch (err) {
+                console.warn('Sign-in failed:', err);
+                setLoginMessage(err.message || 'Sign-in failed.', true);
+            } finally {
+                btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-lock mr-2"></i>Sign In';
+            }
+        }
+        async function loginOffline() {
+            const username = document.getElementById('loginUsername').value.trim().toLowerCase();
+            const pin = document.getElementById('loginPin').value.trim();
+            if (!/^\d{4,12}$/.test(pin)) { setLoginMessage('Enter your saved 4–12 digit PIN.', true); return; }
+            try {
+                const saved = JSON.parse(localStorage.getItem(OFFLINE_AUTH_KEY) || 'null');
+                if (!saved || saved.username !== username) throw new Error('No saved offline login for this username on this device. Sign in online first.');
+                const verifier = await deriveOfflineVerifier(pin, saved.salt);
+                if (verifier !== saved.verifier) throw new Error('Incorrect PIN for offline sign-in.');
+                currentUser = saved.user;
+                currentRole = currentUser.role;
+                if (currentRole !== 'admin') {
+                    reviews = reviews.filter(r => String(r.technicianId || '') === String(currentUser.id) || String(r.technician || '').toLowerCase() === String(currentUser.name || '').toLowerCase());
+                    schedules = schedules.filter(s => String(s.assignedTech || s.techName || '').toLowerCase() === String(currentUser.name || '').toLowerCase() || String(s.assignedTech || '') === String(currentUser.id));
+                    technicians = technicians.filter(t => String(t.id) === String(currentUser.id));
+                    saveStateToStorage();
+                }
+                authToken = '';
+                sessionStorage.removeItem('ppm_auth_token');
+                document.getElementById('loginPin').value = '';
+                enterAuthenticatedApp();
+                setLoginMessage('Offline session active. New records will queue until you reconnect and sign in again if your server session has expired.');
+            } catch (err) { setLoginMessage(err.message || 'Offline login failed.', true); }
+        }
+        function enterAuthenticatedApp() {
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('logoutButton').disabled = false;
+            document.getElementById('logoutButton').textContent = 'Log out';
+            switchRole(currentRole);
+            if (!chartsInitialized && typeof Chart !== 'undefined') { initCharts(); chartsInitialized = true; }
+            toggleAmcFields();
+            renderAllViews();
+        }
+        function logoutUser() {
+            authToken = ''; currentUser = null; currentRole = null;
+            sessionStorage.removeItem('ppm_auth_token');
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            document.getElementById('logoutButton').disabled = true;
+            document.getElementById('logoutButton').textContent = 'Log in';
+            document.getElementById('loginPin').value = '';
+            setLoginMessage('You have signed out. Use your PIN to sign in again.');
+        }
+        async function apiPost(payload) {
+            if (!navigator.onLine) throw new Error('This action requires an online connection.');
+            if (!authToken) throw new Error('Please sign in online before performing this action.');
+            const response = await fetch(GOOGLE_API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...payload, authToken }) });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const result = await response.json();
+            if (!result.ok) throw new Error(result.error || 'Server rejected the request.');
+            return result;
         }
 
         // Render All UI Data Tables
@@ -937,17 +1078,53 @@
         function populateAssetDropdowns() {
             const ppmSelect = document.getElementById('ppmAssetSelect');
             const schedSelect = document.getElementById('mScheduleAsset');
-
-            // Do not populate thousands of options until the technician searches by location.
-            if (ppmSelect) ppmSelect.replaceChildren(new Option('-- Type a location above to search --', ''));
-
-            // Build the schedule list in one operation, avoiding repeated innerHTML += re-parsing.
-            if (schedSelect) {
-                const fragment = document.createDocumentFragment();
-                fragment.appendChild(new Option('-- Select Target Asset --', ''));
-                assets.forEach(a => fragment.appendChild(new Option(`${a.name} (${a.id} - ${a.location})`, a.id)));
-                schedSelect.replaceChildren(fragment);
+            if (ppmSelect && !document.getElementById('ppmLocationInput').value.trim()) {
+                ppmSelect.replaceChildren(new Option('-- Type a location above to search --', ''));
             }
+            if (schedSelect && !document.getElementById('mScheduleAssetSearch').value.trim()) {
+                schedSelect.replaceChildren(new Option('Type above to find an asset', ''));
+            }
+        }
+
+        function filterScheduleAssets() {
+            const input = document.getElementById('mScheduleAssetSearch');
+            const select = document.getElementById('mScheduleAsset');
+            const hint = document.getElementById('mScheduleAssetHint');
+            const query = input.value.trim().toLocaleLowerCase();
+            select.replaceChildren();
+            if (query.length < 2) {
+                select.appendChild(new Option('Type at least 2 characters to search', ''));
+                hint.textContent = 'Search by exact asset ID, or by apartment, location, building or name.';
+                return;
+            }
+            const exactId = assets.filter(a => String(a.id ?? '').trim().toLocaleLowerCase() === query);
+            const matches = (exactId.length ? exactId : assets.filter(a =>
+                [a.id, a.location, a.building, a.name, a.type, a.model, a.serial]
+                    .some(v => String(v ?? '').trim().toLocaleLowerCase().includes(query))
+            )).slice(0, 100);
+            if (!matches.length) {
+                select.appendChild(new Option('No matching assets', ''));
+                hint.textContent = 'No matches found. Try another ID or location.';
+                return;
+            }
+            select.appendChild(new Option(`Select one of ${matches.length} match(es)`, ''));
+            const fragment = document.createDocumentFragment();
+            matches.forEach(a => fragment.appendChild(new Option(`${a.id} — ${a.name} | ${a.building} | ${a.location}`, a.id)));
+            select.appendChild(fragment);
+            hint.textContent = `${matches.length}${matches.length === 100 ? '+' : ''} matching assets. Exact ID matches take priority.`;
+        }
+
+        function selectScheduleAsset() {
+            const select = document.getElementById('mScheduleAsset');
+            if (select.value) {
+                const a = assets.find(item => String(item.id) === select.value);
+                if (a) document.getElementById('mScheduleAssetSearch').value = `${a.id} — ${a.name}`;
+            }
+        }
+
+        function toggleAmcFields() {
+            const isAmc = document.getElementById('ppmServiceType').value === 'AMC PPM Service';
+            document.getElementById('amcDetailsPanel').classList.toggle('hidden', !isAmc);
         }
 
         function handlePhotoPreview(e) {
@@ -972,24 +1149,34 @@
         }
 
         function submitPPMRecord() {
+            if (!currentUser) return showToast('Please sign in before recording service.', 'error');
             const assetId = document.getElementById('ppmAssetSelect').value;
             const serviceType = document.getElementById('ppmServiceType').value;
             const dateTime = document.getElementById('ppmDateTime').value;
             const notes = document.getElementById('ppmWorkNotes').value.trim();
+            const serviceIsAmc = serviceType === 'AMC PPM Service';
+            const amcCompany = document.getElementById('ppmAmcCompany').value.trim();
+            const amcContract = document.getElementById('ppmAmcContract').value.trim();
+            const amcVisit = document.getElementById('ppmAmcVisit').value.trim();
 
-            if (!assetId || !dateTime || !notes) {
-                showToast("Please complete all required fields (Asset, Date, Notes).", "error");
+            if (!assetId || !dateTime || !notes || (serviceIsAmc && !amcCompany)) {
+                showToast(serviceIsAmc ? "For AMC PPM, complete Asset, Date, Notes and AMC Company." : "Please complete all required fields (Asset, Date, Notes).", "error");
                 return;
             }
 
             const targetAsset = assets.find(a => a.id === assetId);
 
             const newRecord = {
-                id: `PPM-REC-${Date.now().toString().slice(-5)}`,
+                id: `PPM-REC-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, 
                 assetId: assetId,
                 assetName: targetAsset ? `${targetAsset.name} (${targetAsset.location})` : assetId,
-                technician: currentRole === 'admin' ? "Ishan Madhushanka" : "Saman Kumara",
+                technician: currentUser.name,
+                technicianId: currentUser.id,
+                submittedByRole: currentRole,
                 serviceType: serviceType,
+                amcCompany: serviceIsAmc ? amcCompany : '',
+                amcContract: serviceIsAmc ? amcContract : '',
+                amcVisit: serviceIsAmc ? amcVisit : '',
                 dateTime: dateTime.replace('T', ' '),
                 notes: notes,
                 photo: currentPpmPhotoData,
@@ -998,6 +1185,7 @@
             };
 
             reviews.unshift(newRecord);
+            pendingSync.push({ action: 'saveRecord', record: newRecord, queuedAt: new Date().toISOString() });
 
             // If triggered from scheduled task, mark schedule as completed
             if (activeScheduleId) {
@@ -1009,7 +1197,9 @@
             saveStateToStorage();
             renderAllViews();
             resetPPMForm();
-            showToast("PPM record submitted successfully! Sent to review queue.", "success");
+            showToast(navigator.onLine ? "PPM record saved locally; attempting sync." : "Saved offline. It will sync when this device is online.", "success");
+            updateSyncIndicator();
+            if (navigator.onLine) syncPendingRecords();
             
             if (currentRole === 'admin') {
                 switchTab('review');
@@ -1019,6 +1209,11 @@
         function resetPPMForm() {
             document.getElementById('ppmLocationInput').value = '';
             document.getElementById('ppmWorkNotes').value = '';
+            document.getElementById('ppmAmcCompany').value = '';
+            document.getElementById('ppmAmcContract').value = '';
+            document.getElementById('ppmAmcVisit').value = '';
+            document.getElementById('ppmServiceType').value = 'Monthly Routine PPM';
+            toggleAmcFields();
             removePhotoPreview();
             populateAssetDropdowns();
             setInitialDateTime();
@@ -1039,7 +1234,7 @@
                     <td class="p-4 font-bold text-accentcyan">${r.id}</td>
                     <td class="p-4 font-medium text-white">${r.assetName}</td>
                     <td class="p-4 text-xs">${r.technician}</td>
-                    <td class="p-4"><span class="bg-darknavy px-2 py-1 rounded text-xs border border-navyslate/50">${r.serviceType}</span></td>
+                    <td class="p-4"><span class="bg-darknavy px-2 py-1 rounded text-xs border border-navyslate/50">${r.serviceType}</span>${r.amcCompany ? `<div class="text-[10px] text-accentcyan mt-1">${r.amcCompany}${r.amcVisit ? ` · ${r.amcVisit}` : ''}</div>` : ''}</td>
                     <td class="p-4 text-xs text-gray-300">${r.dateTime}</td>
                     <td class="p-4">
                         ${r.photo ? `
@@ -1074,28 +1269,30 @@
             `).join('');
         }
 
-        function approveReview(id) {
+        async function approveReview(id) {
+            if (currentRole !== 'admin') return showToast('Admin / Supervisor access required.', 'error');
             const rec = reviews.find(r => r.id === id);
-            if (rec) {
-                rec.status = 'Approved';
-                // Update corresponding target asset status to Operational
+            if (!rec) return;
+            try {
+                await apiPost({ action: 'approveRecord', id, status: 'Approved' });
+                rec.status = 'Approved'; rec.approvedBy = currentUser.name;
                 const asset = assets.find(a => a.id === rec.assetId);
                 if (asset) asset.status = 'Operational';
-
-                saveStateToStorage();
-                renderAllViews();
-                showToast("Service entry verified & approved!", "success");
-            }
+                saveStateToStorage(); renderAllViews();
+                showToast('Service entry verified and approved.', 'success');
+            } catch (err) { showToast('Could not approve record: ' + err.message, 'error'); }
         }
 
-        function rejectReview(id) {
+        async function rejectReview(id) {
+            if (currentRole !== 'admin') return showToast('Admin / Supervisor access required.', 'error');
             const rec = reviews.find(r => r.id === id);
-            if (rec) {
-                rec.status = 'Rejected';
-                saveStateToStorage();
-                renderAllViews();
-                showToast("Service entry rejected.", "error");
-            }
+            if (!rec) return;
+            try {
+                await apiPost({ action: 'rejectRecord', id });
+                rec.status = 'Rejected'; rec.approvedBy = currentUser.name;
+                saveStateToStorage(); renderAllViews();
+                showToast('Service entry rejected.', 'info');
+            } catch (err) { showToast('Could not reject record: ' + err.message, 'error'); }
         }
 
         function deleteReview(id) {
@@ -1142,6 +1339,7 @@
                 </tr>
             `).join('');
         }
+
 
         function renderMyTasks() {
             const tbody = document.getElementById('myTasksTableBody');
@@ -1206,10 +1404,9 @@
                             ${t.status}
                         </span>
                     </td>
-                    <td class="p-4 text-right">
-                        <button onclick="deleteTech('${t.id}')" class="text-gray-400 hover:text-red-400 px-2 py-1 text-xs">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                    <td class="p-4 text-right whitespace-nowrap">
+                        <button onclick="editTech('${t.id}')" class="text-accentcyan hover:text-white px-2 py-1 text-xs" title="Edit profile / assign PIN"><i class="fa-solid fa-pen"></i> Edit / PIN</button>
+                        <button onclick="deleteTech('${t.id}')" class="text-gray-400 hover:text-red-400 px-2 py-1 text-xs" title="Deactivate technician"><i class="fa-solid fa-user-slash"></i></button>
                     </td>
                 </tr>
             `).join('');
@@ -1217,15 +1414,20 @@
             // Also update tech options in schedule modal
             const techSelect = document.getElementById('mScheduleTech');
             if (techSelect) {
-                techSelect.innerHTML = technicians.map(t => `<option value="${t.name}">${t.name} (${t.role})</option>`).join('');
+                techSelect.innerHTML = technicians.filter(t => String(t.status || '').toLowerCase() !== 'inactive').map(t => `<option value="${t.name}">${t.name} (${t.role || t.specialty || 'Technician'})</option>`).join('');
             }
         }
 
-        function deleteTech(id) {
-            technicians = technicians.filter(t => t.id !== id);
-            saveStateToStorage();
-            renderAllViews();
-            showToast("Technician removed from roster.", "info");
+        async function deleteTech(id) {
+            if (currentRole !== 'admin') { showToast('Admin / Supervisor access required.', 'error'); return; }
+            const tech = technicians.find(t => String(t.id) === String(id));
+            if (!tech || !confirm('Deactivate ' + tech.name + '? Their history will be retained.')) return;
+            try {
+                await apiPost({ action: 'deactivateTechnician', id });
+                tech.status = 'Inactive';
+                saveStateToStorage(); renderAllViews();
+                showToast('Technician deactivated. Records were retained.', 'success');
+            } catch (err) { showToast('Could not deactivate technician: ' + err.message, 'error'); }
         }
 
         // --- MODAL HANDLERS & CREATION ---
@@ -1233,6 +1435,7 @@
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
         function openAddAssetModal() {
+            if (currentRole !== 'admin') return showToast('Admin / Supervisor access required.', 'error');
             document.getElementById('mAssetId').value = `AST-${String(assets.length + 1).padStart(3, '0')}`;
             document.getElementById('mAssetBuilding').value = '';
             document.getElementById('mAssetLocation').value = '';
@@ -1240,103 +1443,106 @@
             openModal('assetModal');
         }
 
-        function saveAssetModal() {
-            const id = document.getElementById('mAssetId').value.trim();
-            const building = document.getElementById('mAssetBuilding').value.trim();
-            const location = document.getElementById('mAssetLocation').value.trim();
-            const type = document.getElementById('mAssetType').value;
-            const name = document.getElementById('mAssetName').value.trim();
-            const status = document.getElementById('mAssetStatus').value;
-
-            if (!id || !name || !location) {
-                showToast("Please complete required asset fields.", "error");
-                return;
-            }
-
-            assets.push({ id, building: building || 'Main Building', location, type, name, status });
-            saveStateToStorage();
-            renderAllViews();
-            closeModal('assetModal');
-            showToast("New asset added to directory!", "success");
+        async function saveAssetModal() {
+            if (currentRole !== 'admin') return showToast('Admin / Supervisor access required.', 'error');
+            const asset = {
+                id: document.getElementById('mAssetId').value.trim(),
+                building: document.getElementById('mAssetBuilding').value.trim() || 'Main Building',
+                location: document.getElementById('mAssetLocation').value.trim(),
+                type: document.getElementById('mAssetType').value,
+                name: document.getElementById('mAssetName').value.trim(),
+                status: document.getElementById('mAssetStatus').value
+            };
+            if (!asset.id || !asset.name || !asset.location) return showToast('Please complete required asset fields.', 'error');
+            try {
+                await apiPost({ action: 'uploadAssets', assets: [asset] });
+                const i = assets.findIndex(a => String(a.id) === asset.id);
+                if (i >= 0) assets[i] = { ...assets[i], ...asset }; else assets.push(asset);
+                saveStateToStorage(); renderAllViews(); closeModal('assetModal');
+                showToast('Asset saved to Google Sheets.', 'success');
+            } catch (err) { showToast('Could not save asset: ' + err.message, 'error'); }
         }
 
         function openAssignModal() {
+            if (currentRole !== 'admin') return showToast('Admin / Supervisor access required.', 'error');
+            document.getElementById('mScheduleAssetSearch').value = '';
+            document.getElementById('mScheduleAsset').replaceChildren(new Option('Type above to find an asset', ''));
+            document.getElementById('mScheduleAssetHint').textContent = 'Search first; matching assets will appear here. Select one result.';
             openModal('scheduleModal');
+            document.getElementById('mScheduleAssetSearch').focus();
         }
 
-        function saveScheduleModal() {
+        async function saveScheduleModal() {
+            if (currentRole !== 'admin') return showToast('Admin / Supervisor access required.', 'error');
             const assetId = document.getElementById('mScheduleAsset').value;
-            const freq = document.getElementById('mScheduleFreq').value;
+            const frequency = document.getElementById('mScheduleFreq').value;
             const dueDate = document.getElementById('mScheduleDueDate').value;
-            const techName = document.getElementById('mScheduleTech').value;
-
-            if (!assetId || !dueDate) {
-                showToast("Please choose target asset and due date.", "error");
-                return;
-            }
-
-            const targetAsset = assets.find(a => a.id === assetId);
-
-            schedules.push({
-                id: `SCH-${Date.now().toString().slice(-4)}`,
-                assetId: assetId,
-                assetName: targetAsset ? `${targetAsset.name} (${targetAsset.location})` : assetId,
-                frequency: freq,
-                dueDate: dueDate,
-                techName: techName,
-                status: 'Pending'
-            });
-
-            saveStateToStorage();
-            renderAllViews();
-            closeModal('scheduleModal');
-            showToast("PPM Schedule created and assigned!", "success");
+            const assignedTech = document.getElementById('mScheduleTech').value;
+            if (!assetId || !dueDate) return showToast('Please choose target asset and due date.', 'error');
+            const asset = assets.find(a => String(a.id) === String(assetId));
+            const schedule = {
+                id: `SCH-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+                assetId, assetName: asset ? `${asset.name} (${asset.location})` : assetId,
+                location: asset ? asset.location : '', frequency, dueDate, assignedTech, techName: assignedTech, status: 'Pending'
+            };
+            try {
+                await apiPost({ action: 'addSchedule', data: schedule });
+                schedules.push(schedule); saveStateToStorage(); renderAllViews(); closeModal('scheduleModal');
+                showToast('PPM schedule saved to Google Sheets.', 'success');
+            } catch (err) { showToast('Could not save schedule: ' + err.message, 'error'); }
         }
 
-        function openUserModal() { openModal('userModal'); }
+        function openUserModal() {
+            if (currentRole !== 'admin') return showToast('Admin / Supervisor access required.', 'error');
+            editingTechId = null;
+            document.getElementById('mTechName').value = '';
+            document.getElementById('mTechRole').selectedIndex = 0;
+            document.getElementById('mTechPin').value = '';
+            document.getElementById('saveTechButton').textContent = 'Add Technician';
+            openModal('userModal');
+        }
 
-        function saveUserModal() {
+        function editTech(id) {
+            if (currentRole !== 'admin') return showToast('Admin / Supervisor access required.', 'error');
+            const tech = technicians.find(t => String(t.id) === String(id));
+            if (!tech) return;
+            editingTechId = tech.id;
+            document.getElementById('mTechName').value = tech.name || '';
+            document.getElementById('mTechRole').value = tech.specialty || tech.role || 'General Facility Tech';
+            document.getElementById('mTechPin').value = '';
+            document.getElementById('saveTechButton').textContent = 'Save Changes';
+            openModal('userModal');
+        }
+
+        async function saveUserModal() {
+            if (currentRole !== 'admin') return showToast('Admin / Supervisor access required.', 'error');
             const name = document.getElementById('mTechName').value.trim();
-            const role = document.getElementById('mTechRole').value;
-
-            if (!name) {
-                showToast("Please specify technician full name.", "error");
-                return;
-            }
-
-            technicians.push({
-                id: `TECH-${Date.now().toString().slice(-3)}`,
-                name: name,
-                role: role,
-                status: 'On Duty'
-            });
-
-            saveStateToStorage();
-            renderAllViews();
-            closeModal('userModal');
-            showToast("Technician profile created!", "success");
+            const specialty = document.getElementById('mTechRole').value;
+            const pin = document.getElementById('mTechPin').value.trim();
+            if (!name) return showToast('Please specify technician full name.', 'error');
+            if (!editingTechId && !/^\d{4,12}$/.test(pin)) return showToast('Assign a PIN of 4–12 digits to the new technician.', 'error');
+            if (pin && !/^\d{4,12}$/.test(pin)) return showToast('PIN must contain 4–12 digits.', 'error');
+            const existing = editingTechId ? technicians.find(t => String(t.id) === String(editingTechId)) : null;
+            const data = { id: existing ? existing.id : `TECH-${Date.now().toString().slice(-8)}`, name, role: specialty, specialty, status: existing?.status || 'On Duty', accessRole: 'technician', pin };
+            try {
+                const result = await apiPost({ action: 'saveTechnician', data });
+                const saved = { ...data }; delete saved.pin; delete saved.pinSalt; delete saved.pinHash;
+                if (existing) Object.assign(existing, saved); else technicians.push(saved);
+                saveStateToStorage(); renderAllViews(); closeModal('userModal');
+                showToast(existing ? 'Technician profile updated.' : 'Technician created and PIN assigned.', 'success');
+            } catch (err) { showToast('Could not save technician: ' + err.message, 'error'); }
         }
 
         // --- GOOGLE SHEETS SYNC SIMULATOR TOGGLE ---
         function toggleSync() {
-            const dot = document.getElementById('syncDot');
-            const text = document.getElementById('syncText');
-            
-            if (text.innerText === 'Synced') {
-                text.innerText = 'Not synced';
-                text.className = 'text-gray-400 font-medium';
-                dot.className = 'w-2.5 h-2.5 rounded-full bg-gray-500';
-                showToast("Google Sheets Sync paused.", "info");
-            } else {
-                text.innerText = 'Synced';
-                text.className = 'text-emerald-400 font-medium';
-                dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse';
-                showToast("Google Sheets Sync active.", "success");
-            }
+            if (navigator.onLine) syncPendingRecords();
+            updateSyncIndicator();
+            showToast(navigator.onLine ? 'Sync check requested. Pending records stay queued until the server confirms them.' : 'Device is offline. Records remain saved on this device.', 'info');
         }
 
         // --- CHART.JS INITIALIZATION & UPDATES ---
         function initCharts() {
+            if (typeof Chart === 'undefined') { console.warn('Chart.js is not available offline; charts will remain hidden until a connection is available.'); return; }
             const ctx1 = document.getElementById('complianceChart')?.getContext('2d');
             const ctx2 = document.getElementById('assetCategoryChart')?.getContext('2d');
 
@@ -1424,14 +1630,65 @@
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
-  // Connected Google Apps Script Web App URL
+        // PWA install and offline-first service-record queue.
+        async function registerPwaAndSync() {
+            if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+                try { await navigator.serviceWorker.register('./service-worker.js'); }
+                catch (err) { console.warn('PWA service worker registration failed:', err); }
+            }
+            window.addEventListener('online', () => { updateSyncIndicator(); if (currentUser && !authToken && pendingSync.length) showToast('Back online. Sign in online again to securely sync queued records.', 'info'); syncPendingRecords(); });
+            window.addEventListener('offline', updateSyncIndicator);
+            if (navigator.onLine) syncPendingRecords();
+        }
+
+        function updateSyncIndicator() {
+            const dot = document.getElementById('syncDot');
+            const text = document.getElementById('syncText');
+            if (!dot || !text) return;
+            if (!navigator.onLine) {
+                text.textContent = `Offline · ${pendingSync.length} queued`;
+                text.className = 'text-amber-300 font-medium';
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
+            } else if (pendingSync.length) {
+                text.textContent = `${pendingSync.length} pending sync`;
+                text.className = 'text-amber-300 font-medium';
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-400';
+            } else {
+                text.textContent = 'Online · synced';
+                text.className = 'text-emerald-400 font-medium';
+                dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+            }
+        }
+
+        async function syncPendingRecords() {
+            if (syncInProgress || !navigator.onLine || !pendingSync.length) return;
+            syncInProgress = true;
+            try {
+                while (pendingSync.length && navigator.onLine) {
+                    const item = pendingSync[0];
+                    if (!authToken) throw new Error('Sign in online to synchronize queued records.');
+                    await apiPost(item);
+                    pendingSync.shift();
+                    saveStateToStorage();
+                    updateSyncIndicator();
+                }
+            } catch (err) {
+                console.warn('Service records remain queued for sync:', err);
+                updateSyncIndicator();
+            } finally {
+                syncInProgress = false;
+            }
+        }
+
+        // Connected Google Apps Script Web App URL
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbw3KqdX32jknkV4rtz2hqgANBw891hFTfB5m1atnsne6UealKw6CttvX_vZs_jPgRrWJQ/exec";
 
         // Fetch data from Google Sheets on startup
-        async function fetchGoogleSheetData() {
+        async function fetchGoogleSheetData(showSuccess = false) {
             if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) return;
+            if (!authToken) return;
             try {
-                const response = await fetch(`${GOOGLE_API_URL}?action=getAllData`);
+                const response = await fetch(GOOGLE_API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'getAllData', authToken }) });
                 if (!response.ok) throw new Error("HTTP error " + response.status);
                 const data = await response.json();
                 if (!data.ok) throw new Error(data.error || "Google Apps Script returned an error.");
@@ -1446,31 +1703,27 @@
                         localStorage.setItem('ppm_assets', JSON.stringify(assets));
                     }
                 }
-                if (data.records && data.records.length > 0) {
+                if (Array.isArray(data.records)) {
                     reviews = data.records;
                     localStorage.setItem('ppm_reviews', JSON.stringify(reviews));
                 }
-                if (data.schedules && data.schedules.length > 0) {
+                if (Array.isArray(data.schedules)) {
                     schedules = data.schedules;
                     localStorage.setItem('ppm_schedules', JSON.stringify(schedules));
                 }
-                if (data.technicians && data.technicians.length > 0) {
+                if (Array.isArray(data.technicians)) {
                     technicians = data.technicians;
                     localStorage.setItem('ppm_techs', JSON.stringify(technicians));
                 }
                 
-                // Re-render UI with live data
-                renderAllViews();
-                showToast("Synced successfully with Google Sheets!", "success");
+                // The sign-in flow renders once after this fetch completes.
+                if (showSuccess) showToast("Signed in and synced with Google Sheets!", "success");
             } catch (err) {
                 console.error("Using local cache, offline mode active.", err);
             }
         }
 
         // Call this inside your window/document load listener
-        document.addEventListener("DOMContentLoaded", () => {
-            fetchGoogleSheetData();
-            renderAllViews();
-        });  </script>
+        // Server data is loaded only after a successful online sign-in.  </script>
 </body>
 </html>

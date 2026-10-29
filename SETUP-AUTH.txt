@@ -1,0 +1,29 @@
+PPM Facility Hub — PIN login update
+
+PWA files
+1. Back up your GitHub Pages repository first.
+2. Extract this ZIP and upload its contents to the same folder as your existing index.html.
+3. Replace index.html, manifest.webmanifest, and service-worker.js. Upload the icons/ folder and the two root SVG icon files too.
+4. Commit and wait for GitHub Pages to finish deploying.
+
+Google Apps Script backend
+1. Open the spreadsheet > Extensions > Apps Script.
+2. Back up the current script.
+3. Copy the separate Code.gs supplied with this update into the Apps Script editor. Do NOT upload Code.gs into the public GitHub Pages repository.
+4. Save and run setup() once. Approve the permissions.
+5. After setup succeeds, delete the line declaring INITIAL_ADMIN_PIN from the Apps Script code. The PIN hash remains in Script Properties. Save.
+6. Deploy > Manage deployments > Edit the existing web app > choose New version > Deploy. Keep the existing deployment URL and execute-as/access settings.
+
+Initial login
+- Username: admin
+- PIN: the supervisor PIN configured during the initial setup.
+
+Create technician logins
+- Sign in as Admin / Supervisor.
+- Open Staff / Technicians, add a technician, and assign a 4–12 digit numeric PIN.
+- The technician signs in with their TECH ID (shown in the staff list) or their exact full name and PIN.
+
+Important limitations
+- Online sign-in is verified by Apps Script. A previously signed-in user can use the saved offline PIN on that device, but offline authorization is local-device protection, not a substitute for managed-device security.
+- If a device is used by multiple technicians, each person should sign in with their own account. To synchronize queued records, sign in online again with the same technician, or use an administrator account to sync queued records while retaining recorded attribution.
+- Test with a non-critical service record before live use. Verify that the record reaches the Records sheet once and that the technician ID is correct.
