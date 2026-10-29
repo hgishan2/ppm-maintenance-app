@@ -875,8 +875,8 @@
             return {
                 ...raw,
                 id,
-                building: pick('building', 'buildingname', 'buildingtower', 'buildingblock', 'tower', 'block', 'property', 'propertyname', 'site', 'sitename', 'buildingid', 'towername') || 'Not assigned',
-                location: pick('location', 'locationapt', 'locationapartment', 'locationfloor', 'locationunit', 'locationroom', 'apartment', 'apt', 'unit', 'room', 'floor', 'floorno', 'level', 'area', 'locationname', 'locationdescription', 'flat', 'flatno', 'apartmentno') || 'Not specified',
+                building: pick('building', 'buildingname', 'buildingtower', 'buildingtowername', 'buildingblock', 'buildingblockname', 'buildingno', 'buildingnumber', 'buildingcode', 'tower', 'towername', 'block', 'blockname', 'property', 'propertyname', 'site', 'sitename', 'buildingid') || 'Not assigned',
+                location: pick('location', 'locationapt', 'locationapartment', 'locationfloor', 'locationunit', 'locationroom', 'locationflat', 'locationflatno', 'locationarea', 'locationname', 'locationdescription', 'apartment', 'apartmentno', 'apt', 'unit', 'unitno', 'room', 'roomno', 'floor', 'floorno', 'level', 'area', 'flat', 'flatno', 'floorlevel', 'zone', 'zonearea') || 'Not specified',
                 type: pick('type', 'assettype', 'category', 'equipmenttype') || '—',
                 name: pick('name', 'assetname', 'equipmentname', 'description') || 'Unnamed Equipment',
                 model: pick('model', 'modelnumber') || '',
@@ -932,8 +932,8 @@
             tbody.innerHTML = pageItems.map(a => `
                 <tr class="hover:bg-navyslate/20 transition">
                     <td class="p-4 font-bold text-accentcyan">${a.id || '—'}</td>
-                    <td class="p-4">${a.building || '—'}</td>
-                    <td class="p-4">${a.location || '—'}</td>
+                    <td class="p-4">${String(a.building || '').trim() || 'Not assigned'}</td>
+                    <td class="p-4">${String(a.location || '').trim() || 'Not specified'}</td>
                     <td class="p-4"><span class="bg-navyslate/60 text-xs px-2.5 py-1 rounded-md text-gray-200 border border-navyslate/40">${a.type || '—'}</span></td>
                     <td class="p-4 font-medium text-white">${a.name || 'Unnamed Equipment'}</td>
                     <td class="p-4">
@@ -1640,7 +1640,7 @@
         // PWA install and offline-first service-record queue.
         async function registerPwaAndSync() {
             if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-                try { await navigator.serviceWorker.register('./service-worker.js'); }
+                try { const registration = await navigator.serviceWorker.register('./service-worker.js', { updateViaCache: 'none' }); if (registration && registration.update) await registration.update(); }
                 catch (err) { console.warn('PWA service worker registration failed:', err); }
             }
             window.addEventListener('online', () => { updateSyncIndicator(); if (currentUser && !authToken && pendingSync.length) showToast('Back online. Sign in online again to securely sync queued records.', 'info'); syncPendingRecords(); });
@@ -1709,12 +1709,14 @@
                 if (navigator.onLine) syncPendingRecords();
             } catch (err) {
                 console.warn('Could not restore saved session:', err);
-                authToken = ''; currentUser = null; currentRole = null;
-                localStorage.removeItem(AUTH_SESSION_KEY);
-                localStorage.removeItem('ppm_auth_user_v1');
-                sessionStorage.removeItem('ppm_auth_token');
+                // Keep the saved token/user on transient network or deployment errors so
+                // a refresh does not permanently discard a still-valid session. Do not
+                // unlock the app until the backend confirms the token.
+                const message = !navigator.onLine
+                    ? 'You are offline. Use saved offline login and enter your PIN.'
+                    : 'Could not validate your saved session with the server. Check that the latest Apps Script version is deployed, then sign in again if needed.';
                 document.getElementById('loginUsername').focus();
-                setLoginMessage('Your saved session expired. Please sign in again.', true);
+                setLoginMessage(message, true);
             }
         }
 

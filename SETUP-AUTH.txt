@@ -3,13 +3,13 @@ PPM Facility Hub — PIN login update
 PWA files
 1. Back up your GitHub Pages repository first.
 2. Extract this ZIP and upload its contents to the same folder as your existing index.html.
-3. Replace index.html, manifest.webmanifest, and service-worker.js. Upload the icons/ folder and the two root SVG icon files too.
+3. Replace index.html, manifest.webmanifest, and service-worker.js. The service-worker cache version is bumped to force refreshed files. Upload the icons/ folder and the two root SVG icon files too.
 4. Commit and wait for GitHub Pages to finish deploying.
 
 Google Apps Script backend
 1. Open the spreadsheet > Extensions > Apps Script.
 2. Back up the current script.
-3. Copy the separate Code.gs supplied with this update into the Apps Script editor. Do NOT upload Code.gs into the public GitHub Pages repository.
+3. Copy the separate PPM_Facility_Hub_Code_v2.txt supplied with this update into the Apps Script editor. Do NOT upload Code.gs into the public GitHub Pages repository.
 4. Save and run setup() once. Approve the permissions.
 5. After setup succeeds, delete the line declaring INITIAL_ADMIN_PIN from the Apps Script code. The PIN hash remains in Script Properties. Save.
 6. Deploy > Manage deployments > Edit the existing web app > choose New version > Deploy. Keep the existing deployment URL and execute-as/access settings.
