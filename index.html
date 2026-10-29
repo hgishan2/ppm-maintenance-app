@@ -595,7 +595,7 @@
         const defaultSchedules = [];
 
         // State Variables loaded from LocalStorage
-        let assets = JSON.parse(localStorage.getItem('ppm_assets')) || defaultAssets;
+        let assets = (JSON.parse(localStorage.getItem('ppm_assets')) || defaultAssets).map(normalizeAssetRecord).filter(Boolean);
         let technicians = JSON.parse(localStorage.getItem('ppm_techs')) || defaultTechs;
         let schedules = JSON.parse(localStorage.getItem('ppm_schedules')) || defaultSchedules;
         let reviews = JSON.parse(localStorage.getItem('ppm_reviews')) || [];
@@ -706,6 +706,37 @@
         let assetPage = 1;
         let assetFilterQuery = '';
 
+        // Normalize data from Google Sheets, CSV/Excel, and older local caches.
+        // Header names are matched without regard to spaces, punctuation, or capitalization.
+        function normalizeAssetRecord(raw) {
+            if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+            const normalizedKeys = {};
+            for (const [key, value] of Object.entries(raw)) {
+                normalizedKeys[String(key).toLowerCase().replace(/[^a-z0-9]/g, '')] = value;
+            }
+            const pick = (...names) => {
+                for (const name of names) {
+                    const key = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    const value = normalizedKeys[key];
+                    if (value !== undefined && value !== null && String(value).trim() !== '') return String(value).trim();
+                }
+                return '';
+            };
+            const id = pick('id', 'assetid', 'assetcode', 'equipmentid', 'assetnumber');
+            if (!id) return null;
+            return {
+                ...raw,
+                id,
+                building: pick('building', 'buildingname', 'tower', 'block') || '—',
+                location: pick('location', 'locationapt', 'locationapartment', 'apartment', 'apt', 'floor') || '—',
+                type: pick('type', 'assettype', 'category', 'equipmenttype') || '—',
+                name: pick('name', 'assetname', 'equipmentname', 'description') || 'Unnamed Equipment',
+                model: pick('model', 'modelnumber') || '',
+                serial: pick('serial', 'serialnumber', 'serialno') || '',
+                status: pick('status', 'assetstatus', 'condition') || 'Operational'
+            };
+        }
+
         function getFilteredAssets() {
             const query = assetFilterQuery.trim().toLowerCase();
             if (!query) return assets;
@@ -745,11 +776,11 @@
 
             tbody.innerHTML = pageItems.map(a => `
                 <tr class="hover:bg-navyslate/20 transition">
-                    <td class="p-4 font-bold text-accentcyan">${a.id}</td>
-                    <td class="p-4">${a.building}</td>
-                    <td class="p-4">${a.location}</td>
-                    <td class="p-4"><span class="bg-navyslate/60 text-xs px-2.5 py-1 rounded-md text-gray-200 border border-navyslate/40">${a.type}</span></td>
-                    <td class="p-4 font-medium text-white">${a.name}</td>
+                    <td class="p-4 font-bold text-accentcyan">${a.id || '—'}</td>
+                    <td class="p-4">${a.building || '—'}</td>
+                    <td class="p-4">${a.location || '—'}</td>
+                    <td class="p-4"><span class="bg-navyslate/60 text-xs px-2.5 py-1 rounded-md text-gray-200 border border-navyslate/40">${a.type || '—'}</span></td>
+                    <td class="p-4 font-medium text-white">${a.name || 'Unnamed Equipment'}</td>
                     <td class="p-4">
                         <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${
                             a.status === 'Operational' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
@@ -1394,8 +1425,14 @@
                 if (!data.ok) throw new Error(data.error || "Google Apps Script returned an error.");
                 
                 if (Array.isArray(data.assets)) {
-                    assets = data.assets;
-                    localStorage.setItem('ppm_assets', JSON.stringify(assets));
+                    const normalizedAssets = data.assets.map(normalizeAssetRecord).filter(Boolean);
+                    if (data.assets.length && normalizedAssets.length === 0) {
+                        console.error('Assets were returned by Google Sheets, but none had a recognizable asset ID. First record:', data.assets[0]);
+                        showToast('Could not recognize the asset columns returned by Google Sheets. Check the Console.', 'error');
+                    } else {
+                        assets = normalizedAssets;
+                        localStorage.setItem('ppm_assets', JSON.stringify(assets));
+                    }
                 }
                 if (data.records && data.records.length > 0) {
                     reviews = data.records;
