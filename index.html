@@ -642,7 +642,8 @@
         
         let currentRole = null; // assigned only after backend or saved offline PIN verification
         let currentUser = null;
-        let authToken = sessionStorage.getItem('ppm_auth_token') || '';
+        const AUTH_SESSION_KEY = 'ppm_auth_session_v1';
+        let authToken = localStorage.getItem(AUTH_SESSION_KEY) || sessionStorage.getItem('ppm_auth_token') || '';
         let editingTechId = null;
         let currentPpmPhotoData = null;
         let activeScheduleId = null;
@@ -659,7 +660,7 @@
             updateSyncIndicator();
             registerPwaAndSync();
             document.getElementById('logoutButton').disabled = true;
-            document.getElementById('loginUsername').focus();
+            restoreSavedSession();
         });
 
         // Local Storage Persistence
@@ -750,7 +751,9 @@
                 if (!result.ok) throw new Error(result.error || 'Invalid username or PIN.');
                 authToken = result.token;
                 sessionStorage.setItem('ppm_auth_token', authToken);
+                localStorage.setItem(AUTH_SESSION_KEY, authToken);
                 currentUser = { id: result.user.id, name: result.user.name, role: result.user.role };
+                localStorage.setItem('ppm_auth_user_v1', JSON.stringify(currentUser));
                 currentRole = currentUser.role;
                 const salt = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random();
                 const verifier = await deriveOfflineVerifier(pin, salt);
@@ -785,6 +788,8 @@
                 }
                 authToken = '';
                 sessionStorage.removeItem('ppm_auth_token');
+                localStorage.removeItem(AUTH_SESSION_KEY);
+                localStorage.removeItem('ppm_auth_user_v1');
                 document.getElementById('loginPin').value = '';
                 enterAuthenticatedApp();
                 setLoginMessage('Offline session active. New records will queue until you reconnect and sign in again if your server session has expired.');
@@ -802,6 +807,8 @@
         function logoutUser() {
             authToken = ''; currentUser = null; currentRole = null;
             sessionStorage.removeItem('ppm_auth_token');
+            localStorage.removeItem(AUTH_SESSION_KEY);
+            localStorage.removeItem('ppm_auth_user_v1');
             document.getElementById('loginOverlay').classList.remove('hidden');
             document.getElementById('logoutButton').disabled = true;
             document.getElementById('logoutButton').textContent = 'Log in';
@@ -868,8 +875,8 @@
             return {
                 ...raw,
                 id,
-                building: pick('building', 'buildingname', 'tower', 'block') || '—',
-                location: pick('location', 'locationapt', 'locationapartment', 'apartment', 'apt', 'floor') || '—',
+                building: pick('building', 'buildingname', 'buildingtower', 'buildingblock', 'tower', 'block', 'property', 'propertyname', 'site', 'sitename', 'buildingid', 'towername') || 'Not assigned',
+                location: pick('location', 'locationapt', 'locationapartment', 'locationfloor', 'locationunit', 'locationroom', 'apartment', 'apt', 'unit', 'room', 'floor', 'floorno', 'level', 'area', 'locationname', 'locationdescription', 'flat', 'flatno', 'apartmentno') || 'Not specified',
                 type: pick('type', 'assettype', 'category', 'equipmenttype') || '—',
                 name: pick('name', 'assetname', 'equipmentname', 'description') || 'Unnamed Equipment',
                 model: pick('model', 'modelnumber') || '',
@@ -1683,10 +1690,38 @@
         // Connected Google Apps Script Web App URL
         const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbw3KqdX32jknkV4rtz2hqgANBw891hFTfB5m1atnsne6UealKw6CttvX_vZs_jPgRrWJQ/exec";
 
-        // Fetch data from Google Sheets on startup
+        // Restore the authenticated session after refresh, and validate it against the backend.
+        async function restoreSavedSession() {
+            const savedToken = localStorage.getItem(AUTH_SESSION_KEY) || sessionStorage.getItem('ppm_auth_token') || '';
+            const savedUser = JSON.parse(localStorage.getItem('ppm_auth_user_v1') || 'null');
+            if (!savedToken || !savedUser) {
+                document.getElementById('loginUsername').focus();
+                return;
+            }
+            authToken = savedToken;
+            try {
+                const valid = await fetchGoogleSheetData(false);
+                if (!valid) throw new Error('Your session expired. Please sign in again.');
+                currentUser = savedUser;
+                currentRole = currentUser.role === 'admin' ? 'admin' : 'technician';
+                sessionStorage.setItem('ppm_auth_token', authToken);
+                enterAuthenticatedApp();
+                if (navigator.onLine) syncPendingRecords();
+            } catch (err) {
+                console.warn('Could not restore saved session:', err);
+                authToken = ''; currentUser = null; currentRole = null;
+                localStorage.removeItem(AUTH_SESSION_KEY);
+                localStorage.removeItem('ppm_auth_user_v1');
+                sessionStorage.removeItem('ppm_auth_token');
+                document.getElementById('loginUsername').focus();
+                setLoginMessage('Your saved session expired. Please sign in again.', true);
+            }
+        }
+
+        // Fetch data from Google Sheets and return whether the server accepted the session.
         async function fetchGoogleSheetData(showSuccess = false) {
-            if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) return;
-            if (!authToken) return;
+            if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) return false;
+            if (!authToken) return false;
             try {
                 const response = await fetch(GOOGLE_API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'getAllData', authToken }) });
                 if (!response.ok) throw new Error("HTTP error " + response.status);
@@ -1718,8 +1753,10 @@
                 
                 // The sign-in flow renders once after this fetch completes.
                 if (showSuccess) showToast("Signed in and synced with Google Sheets!", "success");
+                return true;
             } catch (err) {
-                console.error("Using local cache, offline mode active.", err);
+                console.error("Could not load Google Sheets data.", err);
+                return false;
             }
         }
 
