@@ -738,10 +738,17 @@
         }
 
         function getFilteredAssets() {
-            const query = assetFilterQuery.trim().toLowerCase();
+            const query = assetFilterQuery.trim().toLocaleLowerCase();
             if (!query) return assets;
-            return assets.filter(a => [a.id, a.name, a.building, a.location, a.type, a.status]
-                .some(value => String(value ?? '').toLowerCase().includes(query)));
+
+            // Exact-match search: when a user enters an Asset ID (e.g. 101),
+            // show that ID only, not names or other IDs that merely contain 101.
+            const exactIdMatches = assets.filter(a => String(a.id ?? '').trim().toLocaleLowerCase() === query);
+            if (exactIdMatches.length) return exactIdMatches;
+
+            // If no exact ID exists, match complete field values only.
+            return assets.filter(a => [a.name, a.building, a.location, a.type, a.status]
+                .some(value => String(value ?? '').trim().toLocaleLowerCase() === query));
         }
 
         function changeAssetPage(delta) {
@@ -915,7 +922,12 @@
                 select.appendChild(new Option('Type at least 2 characters to search assets', ''));
                 return;
             }
-            const filtered = assets.filter(a => String(a.location ?? '').toLowerCase().includes(locQuery) || String(a.building ?? '').toLowerCase().includes(locQuery) || String(a.id ?? '').toLowerCase().includes(locQuery) || String(a.name ?? '').toLowerCase().includes(locQuery)).slice(0, 200);
+            // Exact match only, so searching 101 does not return 101A or names containing 101.
+            const exactIdMatches = assets.filter(a => String(a.id ?? '').trim().toLocaleLowerCase() === locQuery);
+            const filtered = (exactIdMatches.length ? exactIdMatches : assets.filter(a =>
+                [a.location, a.building, a.id, a.name]
+                    .some(value => String(value ?? '').trim().toLocaleLowerCase() === locQuery)
+            )).slice(0, 200);
             const fragment = document.createDocumentFragment();
             filtered.forEach(a => fragment.appendChild(new Option(`${a.name} (${a.id} - ${a.location})`, a.id)));
             if (!filtered.length) fragment.appendChild(new Option('No matching assets', ''));
