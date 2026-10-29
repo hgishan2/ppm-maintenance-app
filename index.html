@@ -202,6 +202,14 @@
             </div>
 
             <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
+                <div class="px-4 py-3 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between border-b border-navyslate/40">
+                    <p id="assetResultsInfo" class="text-xs text-gray-400">Showing assets</p>
+                    <div class="flex items-center gap-2">
+                        <button id="assetPrevPage" onclick="changeAssetPage(-1)" class="bg-navyslate hover:bg-navyslate/80 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs" disabled>Previous</button>
+                        <span id="assetPageInfo" class="text-xs text-gray-300 min-w-20 text-center">Page 1</span>
+                        <button id="assetNextPage" onclick="changeAssetPage(1)" class="bg-navyslate hover:bg-navyslate/80 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs" disabled>Next</button>
+                    </div>
+                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
@@ -246,7 +254,7 @@
             <div class="bg-navycard p-4 rounded-2xl border border-navyslate/40 shadow-md">
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-gray-400 text-sm"></i>
-                    <input type="text" id="assetSearchInput" onkeyup="filterAssetDirectory()" placeholder="Search assets by ID, name, building, or location/apartment number..." class="w-full bg-darknavy border border-navyslate/60 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                    <input type="text" id="assetSearchInput" oninput="filterAssetDirectory()" placeholder="Search assets by ID, name, building, or location/apartment number..." class="w-full bg-darknavy border border-navyslate/60 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
                 </div>
             </div>
 
@@ -693,16 +701,49 @@
         }
 
         // --- ASSET DIRECTORY FUNCTIONS ---
-        function renderAssetTable(data = assets) {
+        // Render only one page at a time so thousands of assets do not freeze the browser.
+        const ASSET_PAGE_SIZE = 50;
+        let assetPage = 1;
+        let assetFilterQuery = '';
+
+        function getFilteredAssets() {
+            const query = assetFilterQuery.trim().toLowerCase();
+            if (!query) return assets;
+            return assets.filter(a => [a.id, a.name, a.building, a.location, a.type, a.status]
+                .some(value => String(value ?? '').toLowerCase().includes(query)));
+        }
+
+        function changeAssetPage(delta) {
+            const filtered = getFilteredAssets();
+            const maxPage = Math.max(1, Math.ceil(filtered.length / ASSET_PAGE_SIZE));
+            assetPage = Math.min(maxPage, Math.max(1, assetPage + delta));
+            renderAssetTable();
+        }
+
+        function renderAssetTable() {
             const tbody = document.getElementById('assetTableBody');
             if (!tbody) return;
+            const filtered = getFilteredAssets();
+            const total = filtered.length;
+            const maxPage = Math.max(1, Math.ceil(total / ASSET_PAGE_SIZE));
+            assetPage = Math.min(assetPage, maxPage);
+            const start = total ? (assetPage - 1) * ASSET_PAGE_SIZE : 0;
+            const pageItems = filtered.slice(start, start + ASSET_PAGE_SIZE);
+            const info = document.getElementById('assetResultsInfo');
+            const pageInfo = document.getElementById('assetPageInfo');
+            const prev = document.getElementById('assetPrevPage');
+            const next = document.getElementById('assetNextPage');
+            if (info) info.textContent = total ? `Showing ${start + 1}–${Math.min(start + ASSET_PAGE_SIZE, total)} of ${total.toLocaleString()} assets` : '0 assets found';
+            if (pageInfo) pageInfo.textContent = `Page ${assetPage} of ${maxPage}`;
+            if (prev) prev.disabled = assetPage <= 1;
+            if (next) next.disabled = assetPage >= maxPage;
 
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400 italic">No assets found in master directory. Import Excel/CSV or click "Add Asset".</td></tr>`;
+            if (total === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400 italic">No assets found. Try another search, import your asset list, or click "Add Asset".</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = data.map(a => `
+            tbody.innerHTML = pageItems.map(a => `
                 <tr class="hover:bg-navyslate/20 transition">
                     <td class="p-4 font-bold text-accentcyan">${a.id}</td>
                     <td class="p-4">${a.building}</td>
@@ -727,14 +768,9 @@
         }
 
         function filterAssetDirectory() {
-            const query = document.getElementById('assetSearchInput').value.toLowerCase();
-            const filtered = assets.filter(a =>
-                a.id.toLowerCase().includes(query) ||
-                a.name.toLowerCase().includes(query) ||
-                a.building.toLowerCase().includes(query) ||
-                a.location.toLowerCase().includes(query)
-            );
-            renderAssetTable(filtered);
+            assetFilterQuery = document.getElementById('assetSearchInput').value || '';
+            assetPage = 1;
+            renderAssetTable();
         }
 
         function deleteAsset(id) {
@@ -788,17 +824,24 @@
                         seen.add(asset.id);
                     }
 
-                    showToast("Uploading " + importedAssets.length + " assets to Google Sheets...", "info");
-                    const response = await fetch(GOOGLE_API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                        body: JSON.stringify({ action: 'uploadAssets', assets: importedAssets })
-                    });
-                    if (!response.ok) throw new Error("HTTP error " + response.status);
-                    const result = await response.json();
-                    if (!result.ok) throw new Error(result.error || "The server rejected the upload.");
+                    // Send moderate batches so a large workbook does not create one oversized request.
+                    const batchSize = 200;
+                    const batchCount = Math.ceil(importedAssets.length / batchSize);
+                    showToast(`Uploading ${importedAssets.length.toLocaleString()} assets in ${batchCount} batches...`, "info");
+                    for (let offset = 0; offset < importedAssets.length; offset += batchSize) {
+                        const batch = importedAssets.slice(offset, offset + batchSize);
+                        const response = await fetch(GOOGLE_API_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify({ action: 'uploadAssets', assets: batch })
+                        });
+                        if (!response.ok) throw new Error("HTTP error " + response.status + " on batch " + (Math.floor(offset / batchSize) + 1));
+                        const result = await response.json();
+                        if (!result.ok) throw new Error((result.error || "The server rejected the upload.") + " Batch " + (Math.floor(offset / batchSize) + 1));
+                        showToast(`Uploaded batch ${Math.floor(offset / batchSize) + 1} of ${batchCount}...`, "info");
+                    }
 
-                    // Only update the browser after the server confirms the request.
+                    // Only update the browser after every batch is confirmed by the server.
                     for (const asset of importedAssets) {
                         const index = assets.findIndex(a => String(a.id) === asset.id);
                         if (index >= 0) assets[index] = { ...assets[index], ...asset };
@@ -836,33 +879,31 @@
         function filterAssetsByLocation() {
             const locQuery = document.getElementById('ppmLocationInput').value.toLowerCase().trim();
             const select = document.getElementById('ppmAssetSelect');
-            select.innerHTML = '<option value="">-- Select Asset --</option>';
-
-            const filtered = assets.filter(a => a.location.toLowerCase().includes(locQuery) || a.building.toLowerCase().includes(locQuery));
-            filtered.forEach(a => {
-                const opt = document.createElement('option');
-                opt.value = a.id;
-                opt.innerText = `${a.name} (${a.id} - ${a.location})`;
-                select.appendChild(opt);
-            });
+            select.replaceChildren(new Option('-- Select Asset --', ''));
+            if (locQuery.length < 2) {
+                select.appendChild(new Option('Type at least 2 characters to search assets', ''));
+                return;
+            }
+            const filtered = assets.filter(a => String(a.location ?? '').toLowerCase().includes(locQuery) || String(a.building ?? '').toLowerCase().includes(locQuery) || String(a.id ?? '').toLowerCase().includes(locQuery) || String(a.name ?? '').toLowerCase().includes(locQuery)).slice(0, 200);
+            const fragment = document.createDocumentFragment();
+            filtered.forEach(a => fragment.appendChild(new Option(`${a.name} (${a.id} - ${a.location})`, a.id)));
+            if (!filtered.length) fragment.appendChild(new Option('No matching assets', ''));
+            select.appendChild(fragment);
         }
 
         function populateAssetDropdowns() {
             const ppmSelect = document.getElementById('ppmAssetSelect');
             const schedSelect = document.getElementById('mScheduleAsset');
-            
-            if (ppmSelect) {
-                ppmSelect.innerHTML = '<option value="">-- Select Asset --</option>';
-                assets.forEach(a => {
-                    ppmSelect.innerHTML += `<option value="${a.id}">${a.name} (${a.id} - ${a.location})</option>`;
-                });
-            }
 
+            // Do not populate thousands of options until the technician searches by location.
+            if (ppmSelect) ppmSelect.replaceChildren(new Option('-- Type a location above to search --', ''));
+
+            // Build the schedule list in one operation, avoiding repeated innerHTML += re-parsing.
             if (schedSelect) {
-                schedSelect.innerHTML = '<option value="">-- Select Target Asset --</option>';
-                assets.forEach(a => {
-                    schedSelect.innerHTML += `<option value="${a.id}">${a.name} (${a.id} - ${a.location})</option>`;
-                });
+                const fragment = document.createDocumentFragment();
+                fragment.appendChild(new Option('-- Select Target Asset --', ''));
+                assets.forEach(a => fragment.appendChild(new Option(`${a.name} (${a.id} - ${a.location})`, a.id)));
+                schedSelect.replaceChildren(fragment);
             }
         }
 
