@@ -169,4 +169,630 @@
                 <h2 class="text-xl font-bold text-white">Building Asset Master Directory</h2>
                 <div class="flex space-x-3">
                     <input type="file" id="excelUploadInput" accept=".csv, .xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
-                    <button onclick="document.getElementById('excelUploadInput').click()" class="bg
+                    <button onclick="document.getElementById('excelUploadInput').click()" class="bg-accentcyan text-darknavy font-bold px-4 py-2 rounded-xl text-xs hover:bg-accentteal transition shadow">
+                        <i class="fa-solid fa-file-excel mr-1.5"></i> Upload Master Excel / CSV
+                    </button>
+                </div>
+            </div>
+            <div class="bg-navycard p-4 rounded-2xl border border-navyslate/40 shadow-md">
+                <input type="text" id="assetSearchInput" onkeyup="filterAssetDirectory()" placeholder="Search assets by name, location, or apartment no..." class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+            </div>
+            <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50">
+                                <th class="p-4">Asset ID</th>
+                                <th class="p-4">Building</th>
+                                <th class="p-4">Location / Apt</th>
+                                <th class="p-4">Asset Type</th>
+                                <th class="p-4">Asset Name</th>
+                                <th class="p-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assetTableBody" class="text-sm divide-y divide-navyslate/30">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCHEDULES & ASSIGNMENTS VIEW (Admin Only) -->
+        <section id="view-schedule" class="view-section hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold text-white">PPM Schedules & Technician Assignment</h2>
+                <button onclick="openAssignModal()" class="bg-accentcyan text-darknavy font-bold px-4 py-2 rounded-xl text-xs hover:bg-accentteal transition shadow">
+                    <i class="fa-solid fa-plus mr-1"></i> Create Schedule
+                </button>
+            </div>
+            <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50">
+                            <th class="p-4">Schedule ID</th>
+                            <th class="p-4">Asset & Location</th>
+                            <th class="p-4">Frequency</th>
+                            <th class="p-4">Due Date</th>
+                            <th class="p-4">Assigned Technician</th>
+                            <th class="p-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleTableBody" class="text-sm divide-y divide-navyslate/30">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- CONFIG & USERS VIEW (Admin Only) -->
+        <section id="view-config" class="view-section hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold text-white">User & Technician Management</h2>
+                <button onclick="openUserModal()" class="bg-accentcyan text-darknavy font-bold px-4 py-2 rounded-xl text-xs hover:bg-accentteal transition shadow">
+                    <i class="fa-solid fa-user-plus mr-1"></i> Add Technician
+                </button>
+            </div>
+            <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50">
+                            <th class="p-4">Tech ID</th>
+                            <th class="p-4">Full Name</th>
+                            <th class="p-4">Role / Specialty</th>
+                            <th class="p-4">Status</th>
+                            <th class="p-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody" class="text-sm divide-y divide-navyslate/30">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- PERFORM PPM EXECUTION HUB (Shared / Tech & Admin) -->
+        <section id="view-perform" class="view-section hidden space-y-6 max-w-4xl mx-auto">
+            <div class="bg-navycard p-6 rounded-2xl border border-navyslate/40 shadow-xl space-y-6">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Execute PPM Service Task</h2>
+                    <p class="text-xs text-gray-400 mt-1">Select location or apartment number to load related building assets.</p>
+                </div>
+
+                <!-- Location / Apartment Search -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-gray-300">1. Enter Area or Apartment No. (e.g. Apt 101, Rooftop, B1)</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="ppmLocationInput" oninput="filterAssetsByLocation()" placeholder="Type apartment number or location..." class="flex-1 bg-darknavy border border-navyslate/60 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                    </div>
+                </div>
+
+                <!-- Asset Selection List -->
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-gray-300">2. Select Asset(s) for PPM Service</label>
+                    <div id="ppmAssetSelectList" class="bg-darknavy border border-navyslate/60 rounded-xl p-4 max-h-48 overflow-y-auto space-y-2">
+                        <p class="text-xs text-gray-500 italic">Type an apartment number above to show related assets...</p>
+                    </div>
+                </div>
+
+                <!-- PPM Service Data Form -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-gray-300">Service Type</label>
+                        <select id="ppmServiceType" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-accentcyan">
+                            <option value="Monthly Routine PPM">Monthly Routine PPM</option>
+                            <option value="Quarterly Servicing">Quarterly Servicing</option>
+                            <option value="Annual Overhaul">Annual Overhaul</option>
+                            <option value="Corrective Maintenance">Corrective Maintenance</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-gray-300">Date & Time</label>
+                        <input type="datetime-local" id="ppmDateTime" class="w-full bg-darknavy border border-navyslate/60 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-accentcyan">
+                    </div>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-gray-300">Work Performed & Observations</label>
+                    <textarea id="ppmWorkNotes" rows="3" placeholder="Describe maintenance checks, filters cleaned, readings recorded..." class="w-full bg-darknavy border border-navyslate/60 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-accentcyan"></textarea>
+                </div>
+
+                <!-- Photo Uploads Before & After -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-xs font-semibold text-gray-300">Before Service Photo</label>
+                        <input type="file" id="photoBeforeInput" accept="image/*" class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-navyslate file:text-white hover:file:bg-navyslate/80">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-semibold text-gray-300">After Service Photo</label>
+                        <input type="file" id="photoAfterInput" accept="image/*" class="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-navyslate file:text-white hover:file:bg-navyslate/80">
+                    </div>
+                </div>
+
+                <button onclick="submitPPMRecord()" class="w-full bg-gradient-to-r from-accentcyan to-accentteal text-darknavy font-bold py-3 rounded-xl hover:opacity-90 transition shadow-lg text-sm">
+                    Submit PPM Record for Supervisor Review
+                </button>
+            </div>
+        </section>
+
+        <!-- MY ASSIGNED TASKS (Technician View Only) -->
+        <section id="view-myTasks" class="view-section hidden space-y-6">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold text-white">My Assigned Task Queue</h2>
+                <button onclick="loadDataFromGoogleSheets()" class="bg-navyslate hover:bg-navyslate/80 text-xs text-white px-3 py-2 rounded-lg transition">
+                    <i class="fa-solid fa-rotate mr-1"></i> Refresh Tasks
+                </button>
+            </div>
+            <div class="bg-navycard rounded-2xl border border-navyslate/40 overflow-hidden shadow-md">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-navyslate/40 text-xs text-gray-300 border-b border-navyslate/50">
+                            <th class="p-4">Schedule ID</th>
+                            <th class="p-4">Asset & Location</th>
+                            <th class="p-4">Frequency</th>
+                            <th class="p-4">Due Date</th>
+                            <th class="p-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myTasksTableBody" class="text-sm divide-y divide-navyslate/30">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal for Schedule Assignment -->
+    <div id="assignModal" class="fixed inset-0 bg-black/70 hidden items-center justify-center z-50 p-4">
+        <div class="bg-navycard border border-navyslate rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <h3 class="font-bold text-white text-lg">Assign PPM Schedule</h3>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs text-gray-400">Select Asset</label>
+                    <select id="assignAssetSelect" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1"></select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Frequency</label>
+                    <select id="assignFrequency" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1">
+                        <option value="Monthly">Monthly</option>
+                        <option value="Quarterly">Quarterly</option>
+                        <option value="Bi-Annual">Bi-Annual</option>
+                        <option value="Annual">Annual</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Due Date</label>
+                    <input type="date" id="assignDueDate" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400">Assign Technician(s)</label>
+                    <select id="assignTechSelect" class="w-full bg-darknavy border border-navyslate rounded-xl p-2.5 text-sm text-white mt-1"></select>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 pt-2">
+                <button onclick="closeAssignModal()" class="px-4 py-2 bg-navyslate/60 text-gray-300 text-xs rounded-xl">Cancel</button>
+                <button onclick="saveNewSchedule()" class="px-4 py-2 bg-accentcyan text-darknavy font-bold text-xs rounded-xl">Save Assignment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-50 space-y-2"></div>
+
+    <!-- JavaScript Application Logic & Google Sheets Integration -->
+    <script>
+        // Connected Google Apps Script Web App URL
+        const GOOGLE_API_URL = "https://script.google.com/macros/s/AKfycbw3KqdX32jknkV4rtz2hqgANBw891hFTfB5m1atnsne6UealKw6CttvX_vZs_jPgRrWJQ/exec";
+
+        // Application State
+        let appState = {
+            role: 'admin',
+            currentUser: { name: 'Ishan Madhushanka', role: 'Supervisor' },
+            assets: [
+                { id: 'AST-101', building: 'Tower A', location: 'Apt 101', type: 'FCU AC Unit', name: 'Living Room FCU', model: 'Carrier 38QN', serial: 'CR98231', status: 'Active' },
+                { id: 'AST-102', building: 'Tower A', location: 'Apt 102', type: 'Exhaust Fan', name: 'Bathroom Extractor', model: 'Systemair', serial: 'SY44120', status: 'Active' },
+                { id: 'AST-103', building: 'Tower B', location: 'Rooftop', type: 'Chiller Unit', name: 'Main Roof Chiller 1', model: 'Trane RTAC', serial: 'TR88109', status: 'Active' }
+            ],
+            records: [
+                { id: 'REC-001', assetId: 'AST-101', assetName: 'Living Room FCU', location: 'Apt 101', technician: 'Alex Mercer', date: '2026-06-01 10:30', type: 'Monthly Routine PPM', photoBefore: '', photoAfter: '', notes: 'Cleaned filters and checked thermostat calibration.', status: 'Pending', approvedBy: '' }
+            ],
+            schedules: [
+                { id: 'SCH-101', assetId: 'AST-101', location: 'Apt 101', frequency: 'Monthly', dueDate: '2026-06-15', assignedTech: 'Alex Mercer', status: 'Scheduled' }
+            ],
+            technicians: [
+                { id: 'TEC-01', name: 'Alex Mercer', role: 'HVAC Specialist', specialty: 'AC & Chillers', status: 'Available' },
+                { id: 'TEC-02', name: 'David Miller', role: 'Electrical Tech', specialty: 'DB Panels & Lighting', status: 'Available' }
+            ]
+        };
+
+        let complianceChartInstance = null;
+        let categoryChartInstance = null;
+
+        // Initialize App
+        document.addEventListener("DOMContentLoaded", () => {
+            const now = new Date().toISOString().slice(0, 16);
+            const dtEl = document.getElementById('ppmDateTime');
+            if(dtEl) dtEl.value = now;
+
+            switchRole('admin');
+            renderAllViews();
+            loadDataFromGoogleSheets();
+        });
+
+        // Role Switcher Logic
+        function switchRole(role) {
+            appState.role = role;
+            const adminTabs = document.querySelectorAll('.admin-tab');
+            const techTabs = document.querySelectorAll('.tech-tab');
+
+            if (role === 'technician') {
+                appState.currentUser = { name: 'Alex Mercer', role: 'Technician' };
+                document.getElementById('userNameDisplay').innerText = appState.currentUser.name;
+                document.getElementById('userRoleDisplay').innerText = appState.currentUser.role;
+                document.getElementById('userAvatar').innerText = 'AM';
+
+                adminTabs.forEach(el => el.classList.add('hidden'));
+                techTabs.forEach(el => el.classList.remove('hidden'));
+                switchTab('perform');
+            } else {
+                appState.currentUser = { name: 'Ishan Madhushanka', role: 'Supervisor' };
+                document.getElementById('userNameDisplay').innerText = appState.currentUser.name;
+                document.getElementById('userRoleDisplay').innerText = appState.currentUser.role;
+                document.getElementById('userAvatar').innerText = 'IM';
+
+                adminTabs.forEach(el => el.classList.remove('hidden'));
+                techTabs.forEach(el => el.classList.remove('hidden'));
+                switchTab('dashboard');
+            }
+        }
+
+        // Tab Navigation
+        function switchTab(tabId) {
+            document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-accentcyan', 'text-darknavy', 'shadow');
+                btn.classList.add('text-gray-300', 'hover:bg-navyslate/40');
+            });
+
+            const activeSec = document.getElementById(`view-${tabId}`);
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            if(activeSec) activeSec.classList.remove('hidden');
+            if(activeBtn) {
+                activeBtn.classList.remove('text-gray-300', 'hover:bg-navyslate/40');
+                activeBtn.classList.add('bg-accentcyan', 'text-darknavy', 'shadow');
+            }
+        }
+
+        // Render Views
+        function renderAllViews() {
+            renderDashboardStats();
+            renderCharts();
+            renderReviewTable();
+            renderAssetTable();
+            renderScheduleTable();
+            renderUserTable();
+            renderMyTasksTable();
+        }
+
+        function renderDashboardStats() {
+            document.getElementById('statAssets').innerText = appState.assets.length;
+            const pendingCount = appState.records.filter(r => r.status === 'Pending').length;
+            document.getElementById('statPending').innerText = pendingCount;
+            document.getElementById('pendingBadge').innerText = pendingCount;
+            const completedCount = appState.records.filter(r => r.status === 'Approved').length;
+            document.getElementById('statCompleted').innerText = completedCount;
+            document.getElementById('statTechs').innerText = appState.technicians.length;
+        }
+
+        function renderCharts() {
+            const approved = appState.records.filter(r => r.status === 'Approved').length;
+            const pending = appState.records.filter(r => r.status === 'Pending').length;
+            const rejected = appState.records.filter(r => r.status === 'Rejected').length;
+
+            const ctx1 = document.getElementById('complianceChart').getContext('2d');
+            if (complianceChartInstance) complianceChartInstance.destroy();
+            complianceChartInstance = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['Approved', 'Pending Review', 'Rejected'],
+                    datasets: [{
+                        label: 'PPM Records',
+                        data: [approved, pending, rejected],
+                        backgroundColor: ['#00f5d4', '#fbbf24', '#f87171'],
+                        borderRadius: 8
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+
+            let categories = {};
+            appState.assets.forEach(a => { categories[a.type] = (categories[a.type] || 0) + 1; });
+            const ctx2 = document.getElementById('assetCategoryChart').getContext('2d');
+            if (categoryChartInstance) categoryChartInstance.destroy();
+            categoryChartInstance = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(categories),
+                    datasets: [{
+                        data: Object.values(categories),
+                        backgroundColor: ['#00b4d8', '#00f5d4', '#3a506b', '#818cf8']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function renderReviewTable() {
+            const tbody = document.getElementById('reviewTableBody');
+            tbody.innerHTML = '';
+            if (appState.records.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500">No PPM records submitted yet.</td></tr>`;
+                return;
+            }
+            appState.records.forEach(r => {
+                let badgeColor = r.status === 'Approved' ? 'bg-accentteal/20 text-accentteal border-accentteal/40' : r.status === 'Rejected' ? 'bg-red-500/20 text-red-400 border-red-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40';
+                tbody.innerHTML += `
+                    <tr class="border-b border-navyslate/30 hover:bg-navyslate/20">
+                        <td class="p-4 font-mono text-xs text-accentcyan">${r.id}</td>
+                        <td class="p-4"><strong>${r.assetName}</strong><br><span class="text-xs text-gray-400">${r.location}</span></td>
+                        <td class="p-4">${r.technician}</td>
+                        <td class="p-4 text-xs text-gray-300">${r.date}</td>
+                        <td class="p-4"><span class="text-xs text-accentcyan">Attached</span></td>
+                        <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeColor}">${r.status}</span></td>
+                        <td class="p-4 text-right space-x-2">
+                            ${r.status === 'Pending' ? `
+                                <button onclick="approveRecord('${r.id}', 'Approved')" class="bg-accentteal/20 hover:bg-accentteal/30 text-accentteal px-3 py-1.5 rounded-lg text-xs font-bold transition">Approve</button>
+                                <button onclick="approveRecord('${r.id}', 'Rejected')" class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-1.5 rounded-lg text-xs font-bold transition">Reject</button>
+                            ` : `<span class="text-xs text-gray-500">Reviewed by ${r.approvedBy}</span>`}
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function filterAssetDirectory() {
+            const query = document.getElementById('assetSearchInput').value.toLowerCase();
+            const rows = document.querySelectorAll('#assetTableBody tr');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        function renderAssetTable() {
+            const tbody = document.getElementById('assetTableBody');
+            tbody.innerHTML = '';
+            appState.assets.forEach(a => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-navyslate/30 hover:bg-navyslate/20">
+                        <td class="p-4 font-mono text-xs text-accentcyan">${a.id}</td>
+                        <td class="p-4">${a.building}</td>
+                        <td class="p-4 font-semibold">${a.location}</td>
+                        <td class="p-4">${a.type}</td>
+                        <td class="p-4">${a.name}</td>
+                        <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs bg-accentteal/20 text-accentteal">${a.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderScheduleTable() {
+            const tbody = document.getElementById('scheduleTableBody');
+            tbody.innerHTML = '';
+            appState.schedules.forEach(s => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-navyslate/30 hover:bg-navyslate/20">
+                        <td class="p-4 font-mono text-xs text-accentcyan">${s.id}</td>
+                        <td class="p-4">${s.location}</td>
+                        <td class="p-4">${s.frequency}</td>
+                        <td class="p-4 text-xs text-gray-300">${s.dueDate}</td>
+                        <td class="p-4"><span class="font-semibold text-accentteal">${s.assignedTech}</span></td>
+                        <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs bg-amber-500/20 text-amber-300">${s.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderUserTable() {
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = '';
+            appState.technicians.forEach(t => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-navyslate/30 hover:bg-navyslate/20">
+                        <td class="p-4 font-mono text-xs text-accentcyan">${t.id}</td>
+                        <td class="p-4 font-bold">${t.name}</td>
+                        <td class="p-4">${t.role} (${t.specialty})</td>
+                        <td class="p-4"><span class="px-2.5 py-1 rounded-full text-xs bg-accentteal/20 text-accentteal">${t.status}</span></td>
+                        <td class="p-4 text-right"><button class="text-xs text-gray-400 hover:text-white">Edit</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function renderMyTasksTable() {
+            const tbody = document.getElementById('myTasksTableBody');
+            tbody.innerHTML = '';
+            const mySchedules = appState.schedules.filter(s => s.assignedTech === appState.currentUser.name || appState.role === 'admin');
+            if (mySchedules.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-500">No tasks currently assigned.</td></tr>`;
+                return;
+            }
+            mySchedules.forEach(s => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-navyslate/30 hover:bg-navyslate/20">
+                        <td class="p-4 font-mono text-xs text-accentcyan">${s.id}</td>
+                        <td class="p-4">${s.location}</td>
+                        <td class="p-4">${s.frequency}</td>
+                        <td class="p-4 text-xs text-gray-300">${s.dueDate}</td>
+                        <td class="p-4 text-right">
+                            <button onclick="startTask('${s.location}')" class="bg-accentcyan text-darknavy font-bold px-3 py-1.5 rounded-lg text-xs hover:bg-accentteal transition">Perform PPM</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Location Asset Picker
+        function filterAssetsByLocation() {
+            const query = document.getElementById('ppmLocationInput').value.toLowerCase();
+            const container = document.getElementById('ppmAssetSelectList');
+            container.innerHTML = '';
+
+            const matchedAssets = appState.assets.filter(a => a.location.toLowerCase().includes(query) || a.building.toLowerCase().includes(query) || a.name.toLowerCase().includes(query));
+
+            if (matchedAssets.length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-500 italic">No assets found matching "${query}"</p>`;
+                return;
+            }
+
+            matchedAssets.forEach(a => {
+                container.innerHTML += `
+                    <label class="flex items-center space-x-3 p-2 rounded-lg hover:bg-navyslate/40 cursor-pointer">
+                        <input type="checkbox" name="selectedAsset" value="${a.id}" class="rounded border-navyslate text-accentcyan focus:ring-accentcyan">
+                        <div class="text-xs">
+                            <strong class="text-white">${a.name}</strong> <span class="text-accentcyan">(${a.location})</span> - <span class="text-gray-400">${a.type}</span>
+                        </div>
+                    </label>
+                `;
+            });
+        }
+
+        function startTask(location) {
+            document.getElementById('ppmLocationInput').value = location;
+            filterAssetsByLocation();
+            switchTab('perform');
+        }
+
+        // Submit PPM Record
+        function submitPPMRecord() {
+            const checkboxes = document.querySelectorAll('input[name="selectedAsset"]:checked');
+            if (checkboxes.length === 0) {
+                showToast("Please select at least one asset to perform PPM.", "error");
+                return;
+            }
+
+            checkboxes.forEach((cb) => {
+                const asset = appState.assets.find(a => a.id === cb.value);
+                const recordData = {
+                    id: 'REC-' + Math.floor(100 + Math.random() * 900),
+                    assetId: asset.id,
+                    assetName: asset.name,
+                    location: asset.location,
+                    technician: appState.currentUser.name,
+                    date: document.getElementById('ppmDateTime').value.replace('T', ' '),
+                    type: document.getElementById('ppmServiceType').value,
+                    notes: document.getElementById('ppmWorkNotes').value,
+                    status: 'Pending',
+                    approvedBy: ''
+                };
+
+                appState.records.unshift(recordData);
+                submitPPMToGoogleSheets(recordData);
+            });
+
+            showToast("PPM record submitted successfully!", "success");
+            renderAllViews();
+            switchTab(appState.role === 'technician' ? 'myTasks' : 'review');
+        }
+
+        // Supervisor Approval
+        function approveRecord(recordId, status) {
+            const record = appState.records.find(r => r.id === recordId);
+            if (record) {
+                record.status = status;
+                record.approvedBy = appState.currentUser.name;
+                updatePPMStatusInGoogleSheets(recordId, status);
+                renderAllViews();
+                showToast(`Record ${recordId} marked as ${status}.`, "success");
+            }
+        }
+
+        // Modals
+        function openAssignModal() {
+            const assetSel = document.getElementById('assignAssetSelect');
+            assetSel.innerHTML = appState.assets.map(a => `<option value="${a.id}">${a.name} (${a.location})</option>`).join('');
+            const techSel = document.getElementById('assignTechSelect');
+            techSel.innerHTML = appState.technicians.map(t => `<option value="${t.name}">${t.name} - ${t.role}</option>`).join('');
+            document.getElementById('assignModal').classList.remove('hidden');
+            document.getElementById('assignModal').classList.add('flex');
+        }
+
+        function closeAssignModal() {
+            document.getElementById('assignModal').classList.add('hidden');
+            document.getElementById('assignModal').classList.remove('flex');
+        }
+
+        function saveNewSchedule() {
+            const assetId = document.getElementById('assignAssetSelect').value;
+            const asset = appState.assets.find(a => a.id === assetId);
+            const newSch = {
+                id: 'SCH-' + Math.floor(100 + Math.random() * 900),
+                assetId: assetId,
+                location: asset.location,
+                frequency: document.getElementById('assignFrequency').value,
+                dueDate: document.getElementById('assignDueDate').value,
+                assignedTech: document.getElementById('assignTechSelect').value,
+                status: 'Scheduled'
+            };
+            appState.schedules.unshift(newSch);
+            closeAssignModal();
+            renderAllViews();
+            showToast("New schedule assigned successfully!", "success");
+        }
+
+        // Notifications
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            let borderColor = type === 'success' ? 'border-accentteal text-accentteal' : type === 'error' ? 'border-red-400 text-red-400' : 'border-amber-400 text-amber-300';
+            toast.className = `bg-navycard border ${borderColor} px-4 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center space-x-2`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        // Google Sheets API Logic
+        async function loadDataFromGoogleSheets() {
+            if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) return;
+            try {
+                const response = await fetch(`${GOOGLE_API_URL}?action=getAllData`);
+                const data = await response.json();
+                if (data.assets && data.assets.length > 0) appState.assets = data.assets;
+                if (data.records && data.records.length > 0) appState.records = data.records;
+                if (data.schedules && data.schedules.length > 0) appState.schedules = data.schedules;
+                if (data.technicians && data.technicians.length > 0) appState.technicians = data.technicians;
+                renderAllViews();
+            } catch (err) { console.error("Google Sheets sync offline", err); }
+        }
+
+        async function submitPPMToGoogleSheets(recordData) {
+            if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) return;
+            try {
+                await fetch(GOOGLE_API_URL, {
+                    method: "POST", mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "addRecord", data: recordData })
+                });
+            } catch (err) { console.error("Sync error", err); }
+        }
+
+        async function updatePPMStatusInGoogleSheets(recordId, status) {
+            if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) return;
+            try {
+                await fetch(GOOGLE_API_URL, {
+                    method: "POST", mode: "no-cors",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "approveRecord", id: recordId, status: status, approver: appState.currentUser.name })
+                });
+            } catch (err) { console.error("Sync error", err); }
+        }
+
+        function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            showToast("Master asset file uploaded successfully!", "success");
+        }
+    </script>
+</body>
+</html>
