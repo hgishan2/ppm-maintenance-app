@@ -575,15 +575,8 @@
 
     <!-- JAVASCRIPT APPLICATION CORE LOGIC -->
     <script>
-        // Default Sample Data (Loaded if localStorage is empty)
-        const defaultAssets = [
-            { id: "AST-001", building: "Tower A", location: "Apt 101", type: "HVAC", name: "FCU Unit 1.1", status: "Operational" },
-            { id: "AST-002", building: "Tower A", location: "Apt 102", type: "Plumbing", name: "Water Heater", status: "Operational" },
-            { id: "AST-003", building: "Tower B", location: "Apt 205", type: "Electrical", name: "Sub-Distribution Board", status: "Operational" },
-            { id: "AST-004", building: "Main Hall", location: "Rooftop", type: "HVAC", name: "Chiller Unit #2", status: "Under Servicing" },
-            { id: "AST-005", building: "Basement", location: "B1 Pump Room", type: "Plumbing", name: "Hydro-Pneumatic Pump", status: "Operational" },
-            { id: "AST-006", building: "Tower A", location: "Elevator Shaft", type: "Elevators", name: "Passenger Elevator #1", status: "Operational" }
-        ];
+        // Fresh start: no sample assets or sample schedules.
+        const defaultAssets = [];
 
         const defaultTechs = [
             { id: "TECH-101", name: "Ishan Madhushanka", role: "HVAC Specialist", status: "On Duty" },
@@ -591,10 +584,7 @@
             { id: "TECH-103", name: "Kasun Perera", role: "Electrical Specialist", status: "On Duty" }
         ];
 
-        const defaultSchedules = [
-            { id: "SCH-1001", assetId: "AST-004", assetName: "Chiller Unit #2 (Rooftop)", frequency: "Monthly", dueDate: "2026-11-05", techName: "Ishan Madhushanka", status: "Pending" },
-            { id: "SCH-1002", assetId: "AST-005", assetName: "Hydro-Pneumatic Pump (B1 Pump Room)", frequency: "Quarterly", dueDate: "2026-11-10", techName: "Saman Kumara", status: "Pending" }
-        ];
+        const defaultSchedules = [];
 
         // State Variables loaded from LocalStorage
         let assets = JSON.parse(localStorage.getItem('ppm_assets')) || defaultAssets;
@@ -757,52 +747,76 @@
         }
 
         // --- EXCEL / CSV IMPORT VIA SHEETJS ---
-        function handleExcelUpload(e) {
+        async function handleExcelUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(evt) {
+            reader.onload = async function(evt) {
                 try {
                     const data = new Uint8Array(evt.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const sheetName = workbook.SheetNames[0];
-                    const sheet = workbook.Sheets[sheetName];
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const parsedData = XLSX.utils.sheet_to_json(sheet);
 
-                    if (parsedData.length === 0) {
+                    if (!parsedData.length) {
                         showToast("Uploaded sheet contains no readable data.", "error");
                         return;
                     }
 
-                    let addedCount = 0;
-                    parsedData.forEach((row, idx) => {
-                        const newAsset = {
-                            id: row['Asset ID'] || row['id'] || `AST-${Date.now().toString().slice(-4)}-${idx}`,
-                            building: row['Building'] || row['building'] || 'Main Building',
-                            location: row['Location'] || row['location'] || row['Location / Apt'] || 'General',
-                            type: row['Asset Type'] || row['type'] || 'HVAC',
-                            name: row['Asset Name'] || row['name'] || 'Unnamed Equipment',
-                            status: row['Status'] || row['status'] || 'Operational'
-                        };
-                        
-                        // Prevent duplicate IDs by updating if exists
-                        const existingIdx = assets.findIndex(a => a.id === newAsset.id);
-                        if (existingIdx >= 0) {
-                            assets[existingIdx] = newAsset;
-                        } else {
-                            assets.push(newAsset);
-                            addedCount++;
-                        }
-                    });
+                    const importedAssets = parsedData.map((row, idx) => ({
+                        id: String(row['Asset ID'] ?? row['id'] ?? `AST-${Date.now()}-${idx}`).trim(),
+                        building: String(row['Building'] ?? row['building'] ?? 'Main Building').trim(),
+                        location: String(row['Location'] ?? row['location'] ?? row['Location / Apt'] ?? 'General').trim(),
+                        type: String(row['Asset Type'] ?? row['type'] ?? 'HVAC').trim(),
+                        name: String(row['Asset Name'] ?? row['name'] ?? 'Unnamed Equipment').trim(),
+                        model: String(row['Model'] ?? row['model'] ?? '').trim(),
+                        serial: String(row['Serial'] ?? row['Serial Number'] ?? row['serial'] ?? '').trim(),
+                        status: String(row['Status'] ?? row['status'] ?? 'Operational').trim()
+                    }));
 
+                    if (importedAssets.some(a => !a.id)) {
+                        showToast("Import stopped: every asset must have an ID.", "error");
+                        return;
+                    }
+                    const seen = new Set();
+                    for (const asset of importedAssets) {
+                        if (seen.has(asset.id)) {
+                            showToast("Import stopped: duplicate asset ID " + asset.id, "error");
+                            return;
+                        }
+                        seen.add(asset.id);
+                    }
+
+                    showToast("Uploading " + importedAssets.length + " assets to Google Sheets...", "info");
+                    const response = await fetch(GOOGLE_API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify({ action: 'uploadAssets', assets: importedAssets })
+                    });
+                    if (!response.ok) throw new Error("HTTP error " + response.status);
+                    const result = await response.json();
+                    if (!result.ok) throw new Error(result.error || "The server rejected the upload.");
+
+                    // Only update the browser after the server confirms the request.
+                    for (const asset of importedAssets) {
+                        const index = assets.findIndex(a => String(a.id) === asset.id);
+                        if (index >= 0) assets[index] = { ...assets[index], ...asset };
+                        else assets.push(asset);
+                    }
                     saveStateToStorage();
                     renderAllViews();
-                    showToast(`Successfully processed ${parsedData.length} records (${addedCount} new added)!`, "success");
+                    showToast("Google Sheets updated: " + importedAssets.length + " assets processed.", "success");
                 } catch (err) {
-                    console.error(err);
-                    showToast("Error parsing Excel/CSV file.", "error");
+                    console.error("Asset upload failed:", err);
+                    showToast("Asset upload failed or was not confirmed. Check the Console and Google Sheet before retrying.", "error");
+                } finally {
+                    e.target.value = '';
                 }
+            };
+            reader.onerror = function() {
+                showToast("Could not read the selected file.", "error");
+                e.target.value = '';
             };
             reader.readAsArrayBuffer(file);
         }
@@ -1334,9 +1348,11 @@
             if (!GOOGLE_API_URL || GOOGLE_API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) return;
             try {
                 const response = await fetch(`${GOOGLE_API_URL}?action=getAllData`);
+                if (!response.ok) throw new Error("HTTP error " + response.status);
                 const data = await response.json();
+                if (!data.ok) throw new Error(data.error || "Google Apps Script returned an error.");
                 
-                if (data.assets && data.assets.length > 0) {
+                if (Array.isArray(data.assets)) {
                     assets = data.assets;
                     localStorage.setItem('ppm_assets', JSON.stringify(assets));
                 }
